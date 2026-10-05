@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96">
+    <path android:fillColor="#16834A" android:pathData="M4,4 L92,4 L92,92 L4,92 Z"/>
+    <!-- Foguinho amarelo -->
+    <path android:fillColor="#FFD83D" android:pathData="M28,69 C20,62 20,51 27,43 C31,38 35,33 35,25 C43,31 47,38 46,45 C51,41 55,36 56,30 C64,39 67,48 64,56 C61,66 53,72 43,73 C37,74 32,72 28,69 Z"/>
+    <path android:fillColor="#FFF3A1" android:pathData="M36,63 C32,59 33,54 37,49 C40,46 42,43 42,39 C47,44 49,49 47,54 C50,52 52,49 53,46 C56,53 55,59 51,63 C47,67 41,67 36,63 Z"/>
+    <!-- Gota d'água azul clara -->
+    <path android:fillColor="#63C7FF" android:pathData="M68,23 C61,34 55,42 55,51 C55,61 61,68 70,68 C79,68 85,61 85,51 C85,42 78,33 68,23 Z"/>
+    <path android:fillColor="#BDEAFF" android:pathData="M69,33 C65,40 62,45 62,51 C62,57 65,61 70,61 C73,61 76,59 77,56 C71,57 67,54 67,49 C67,44 69,39 72,35 Z"/>
+</vector>

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.aguagasexpress",
+      "sha256_cert_fingerprints": [
+        "D4:A4:26:9D:12:6B:69:DE:FD:81:12:6D:1E:86:35:70:17:00:6C:59:ED:EA:EA:1D:76:8C:68:D9:C1:DC:B4:8A"
+      ]
+    }
+  }
+]
