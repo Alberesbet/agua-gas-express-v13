@@ -64,7 +64,6 @@ a.secondary{
 </head>
 
 <body>
-
 <main>
 
 <h1>Água &amp; Gás Express</h1>
@@ -89,11 +88,12 @@ const perfil = (p.get('perfil') || '').toLowerCase();
 
 const empresa = (p.get('empresa') || '').toUpperCase();
 
-const plataforma = (p.get('plataforma') || 'android').toLowerCase();
-
 const title = document.getElementById('title');
+
 const msg = document.getElementById('msg');
+
 const actions = document.getElementById('actions');
+
 const info = document.getElementById('info');
 
 
@@ -102,46 +102,34 @@ const release =
 
 
 const apk = {
-
-  empresa:
-  release + 'app-empresa-debug.apk',
-
-  cliente:
-  release + 'app-cliente-debug.apk',
-
-  entregador:
-  release + 'app-entregador-debug.apk',
-
-  proprietario:
-  release + 'app-desenvolvedor-debug.apk'
-
+  empresa: release + 'app-empresa-debug.apk',
+  cliente: release + 'app-cliente-debug.apk',
+  entregador: release + 'app-entregador-debug.apk',
+  proprietario: release + 'app-desenvolvedor-debug.apk'
 }[perfil] || '';
 
 
 function customUri(){
 
-  return 'aguagasexpress://invite?perfil='
+  return 'https://alberesbet.github.io/agua-gas-express-v13/invite?perfil='
     + encodeURIComponent(perfil)
     + '&empresa='
-    + encodeURIComponent(empresa)
-    + '&plataforma=android';
+    + encodeURIComponent(empresa);
 
 }
 
 
 function intentUri(){
 
-  return 'intent://invite?perfil='
+  return 'https://alberesbet.github.io/agua-gas-express-v13/invite?perfil='
     + encodeURIComponent(perfil)
     + '&empresa='
-    + encodeURIComponent(empresa)
-    + '&plataforma=android'
-    + '#Intent;scheme=aguagasexpress;end';
+    + encodeURIComponent(empresa);
 
 }
 
 
-function addButton(label, href, secondary=false){
+function addButton(label,href,secondary=false){
 
   const a = document.createElement('a');
 
@@ -151,10 +139,10 @@ function addButton(label, href, secondary=false){
 
   a.setAttribute('role','button');
 
-  a.style.touchAction='manipulation';
+  a.style.touchAction = 'manipulation';
 
   if(secondary){
-    a.className='secondary';
+    a.className = 'secondary';
   }
 
   actions.appendChild(a);
@@ -204,14 +192,13 @@ if(perfil === 'empresa'){
 
   addButton(
     '💻 ACESSAR PELO NOTEBOOK',
-    '/agua-gas-express-v13/empresa/?empresa='
-    + encodeURIComponent(empresa),
+    '/agua-gas-express-v13/empresa.html?empresa='
+      + encodeURIComponent(empresa),
     true
   );
 
   info.textContent =
-  'Código da empresa: '
-  + (empresa || 'não informado');
+  'Código da empresa: ' + (empresa || 'não informado');
 
 }
 
@@ -234,8 +221,7 @@ else if(perfil === 'cliente'){
   );
 
   info.textContent =
-  'Empresa do convite: '
-  + (empresa || 'não informada');
+  'Empresa do convite: ' + (empresa || 'não informada');
 
 }
 
@@ -258,8 +244,7 @@ else if(perfil === 'entregador'){
   );
 
   info.textContent =
-  'Empresa do convite: '
-  + (empresa || 'não informada');
+  'Empresa do convite: ' + (empresa || 'não informada');
 
 }
 
