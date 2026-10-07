@@ -27,7 +27,12 @@ const title=document.getElementById('title');
 const msg=document.getElementById('msg');
 const actions=document.getElementById('actions');
 const info=document.getElementById('info');
-const androidApkUrl='https://agua-e-gas-express.web.app/downloads/AguaGasExpress.apk';
+const androidApkUrl =
+  perfil === 'empresa'
+    ? 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-empresa-debug.apk'
+    : perfil === 'cliente'
+      ? 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-cliente-debug.apk'
+      : 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-entregador-debug.apk';
 const names={empresa:'Acesso da Empresa',cliente:'Acesso do Cliente',entregador:'Acesso do Entregador'};
 title.textContent=names[perfil]||'Convite';
 
