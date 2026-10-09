@@ -1,1 +1,190 @@
+```html
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Água & Gás Express — Empresa</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #0b1730;
+      color: #fff;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 24px auto;
+      padding: 30px;
+      background: #173b62;
+      border-radius: 18px;
+    }
+
+    h1 { color: #ff8a32; }
+    h2 { margin-top: 28px; }
+
+    .info {
+      color: #bfe6ff;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .card {
+      margin-top: 18px;
+      padding: 18px;
+      background: #102b49;
+      border-radius: 12px;
+    }
+
+    a, button {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 14px;
+      border: 0;
+      border-radius: 10px;
+      background: #16834a;
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    a.secondary, button.secondary { background: #1688e8; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #8ca9c5;
+      font-size: 16px;
+    }
+
+    .link-text {
+      overflow-wrap: anywhere;
+      font-size: 13px;
+      color: #bfe6ff;
+    }
+
+    .small {
+      color: #bfe6ff;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Água &amp; Gás Express</h1>
+  <h2>Página da Empresa</h2>
+
+  <p class="info">
+    Acesso pelo notebook. Use os links abaixo para baixar o aplicativo
+    ou compartilhar os convites da sua empresa.
+  </p>
+
+  <section class="card">
+    <h2>Identificação da empresa</h2>
+    <label for="empresa">Código da empresa</label>
+    <input id="empresa" type="text" placeholder="Digite o código da empresa">
+    <p class="info" id="status"></p>
+  </section>
+
+  <section class="card">
+    <h2>Aplicativo da Empresa</h2>
+    <p class="info">
+      Se você já publicou o APK da Empresa no GitHub Releases, use o botão
+      abaixo para baixá-lo.
+    </p>
+    <a id="downloadEmpresa" href="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-empresa-debug.apk">
+      BAIXAR APLICATIVO ANDROID
+    </a>
+  </section>
+
+  <section class="card">
+    <h2>Convites</h2>
+
+    <p class="info">Link para o Cliente</p>
+    <p class="link-text" id="linkCliente"></p>
+    <button type="button" onclick="copiar('cliente')">
+      COPIAR LINK DO CLIENTE
+    </button>
+    <a id="abrirCliente" class="secondary" href="#">ABRIR CONVITE DO CLIENTE</a>
+
+    <p class="info">Link para o Entregador</p>
+    <p class="link-text" id="linkEntregador"></p>
+    <button type="button" onclick="copiar('entregador')">
+      COPIAR LINK DO ENTREGADOR
+    </button>
+    <a id="abrirEntregador" class="secondary" href="#">ABRIR CONVITE DO ENTREGADOR</a>
+  </section>
+
+  <p class="small">
+    Esta página oferece acesso por links. Ela não substitui o sistema de
+    cadastro, autenticação, pedidos ou administração do aplicativo.
+  </p>
+</main>
+
+<script>
+  const BASE = 'https://alberesbet.github.io/agua-gas-express-v13/';
+  const params = new URLSearchParams(window.location.search);
+  const campoEmpresa = document.getElementById('empresa');
+  const status = document.getElementById('status');
+
+  campoEmpresa.value = (params.get('empresa') || '').toUpperCase();
+
+  function montarLink(perfil) {
+    const codigo = campoEmpresa.value.trim().toUpperCase();
+    return BASE + 'invite?perfil=' + encodeURIComponent(perfil) +
+      '&empresa=' + encodeURIComponent(codigo);
+  }
+
+  function atualizarLinks() {
+    const codigo = campoEmpresa.value.trim().toUpperCase();
+    status.textContent = codigo
+      ? 'Código selecionado: ' + codigo
+      : 'Informe o código da empresa para preparar os convites.';
+
+    const cliente = montarLink('cliente');
+    const entregador = montarLink('entregador');
+
+    document.getElementById('linkCliente').textContent = cliente;
+    document.getElementById('linkEntregador').textContent = entregador;
+    document.getElementById('abrirCliente').href = cliente;
+    document.getElementById('abrirEntregador').href = entregador;
+  }
+
+  async function copiar(perfil) {
+    const codigo = campoEmpresa.value.trim().toUpperCase();
+
+    if (!codigo) {
+      status.textContent = 'Digite primeiro o código da empresa.';
+      campoEmpresa.focus();
+      return;
+    }
+
+    const link = montarLink(perfil);
+
+    try {
+      await navigator.clipboard.writeText(link);
+      status.textContent = 'Link do ' + perfil + ' copiado!';
+    } catch (e) {
+      window.prompt('Copie o link abaixo:', link);
+    }
+  }
+
+  campoEmpresa.addEventListener('input', atualizarLinks);
+  atualizarLinks();
+</script>
+</body>
+</html>
+```
 
