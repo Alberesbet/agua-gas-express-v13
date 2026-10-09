@@ -92,16 +92,12 @@ function addButton(label, href, secondary=false){
 }
 
 function appPackage(){
-  const suffix = {
-    empresa: '.empresa',
-    cliente: '.cliente',
-    entregador: '.entregador',
-    proprietario: '.desenvolvedor'
-  }[perfil] || '';
-  return 'com.example.aguagasexpress' + suffix;
+  // O projeto Android publicado usa um único applicationId para todos os perfis.
+  return 'com.example.aguagasexpress';
 }
 
 function appIntentUrl(){
+  // Abre o esquema personalizado registrado no AndroidManifest.xml.
   return 'intent://invite?perfil=' +
     encodeURIComponent(perfil) +
     '&empresa=' + encodeURIComponent(empresa) +
