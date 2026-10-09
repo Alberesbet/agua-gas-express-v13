@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -233,7 +232,7 @@
   function montarLink(perfil) {
     const codigo = campoEmpresa.value.trim().toUpperCase();
 
-    return BASE + 'invite?perfil=' +
+    return BASE + 'invite/?perfil=' +
       encodeURIComponent(perfil) +
       '&empresa=' + encodeURIComponent(codigo);
   }
