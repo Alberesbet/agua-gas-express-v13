@@ -1,111 +1,180 @@
 ```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Água & Gás Express — Empresa</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Água &amp; Gás Express — Empresa</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
+      background: #f1f5f9;
+      color: #172033;
       font-family: Arial, sans-serif;
-      background: #0b1730;
-      color: #fff;
     }
 
     main {
-      max-width: 760px;
-      margin: 24px auto;
-      padding: 30px;
-      background: #173b62;
-      border-radius: 18px;
+      width: 100%;
+      max-width: 650px;
+      margin: 0 auto;
     }
 
-    h1 { color: #ff8a32; }
-    h2 { margin-top: 28px; }
-
-    .info {
-      color: #bfe6ff;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
+    h1 {
+      text-align: center;
+      font-size: 26px;
     }
 
     .card {
-      margin-top: 18px;
-      padding: 18px;
-      background: #102b49;
+      margin: 18px 0;
+      padding: 20px;
+      background: #ffffff;
       border-radius: 12px;
+      box-shadow: 0 2px 8px #00000012;
     }
 
-    a, button {
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 16px;
+      text-transform: uppercase;
+    }
+
+    button,
+    a.button {
       display: block;
       width: 100%;
       margin-top: 12px;
-      padding: 14px;
+      padding: 14px 12px;
       border: 0;
-      border-radius: 10px;
-      background: #16834a;
-      color: #fff;
+      border-radius: 8px;
+      background: #087443;
+      color: #ffffff;
       font-size: 15px;
       font-weight: bold;
       text-align: center;
       text-decoration: none;
       cursor: pointer;
+      overflow-wrap: anywhere;
     }
 
-    a.secondary, button.secondary { background: #1688e8; }
+    a.secondary,
+    button.secondary {
+      background: #174ea6;
+    }
 
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-top: 8px;
-      border-radius: 8px;
-      border: 1px solid #8ca9c5;
-      font-size: 16px;
+    .info {
+      color: #475569;
+      line-height: 1.5;
     }
 
     .link-text {
+      padding: 10px;
+      background: #f1f5f9;
+      border-radius: 6px;
       overflow-wrap: anywhere;
       font-size: 13px;
-      color: #bfe6ff;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
     }
 
     .small {
-      color: #bfe6ff;
+      color: #64748b;
       font-size: 12px;
       line-height: 1.5;
-      margin-top: 24px;
     }
   </style>
 </head>
+
 <body>
 <main>
   <h1>Água &amp; Gás Express</h1>
-  <h2>Página da Empresa</h2>
-
-  <p class="info">
-    Acesso pelo notebook. Use os links abaixo para baixar o aplicativo
-    ou compartilhar os convites da sua empresa.
-  </p>
 
   <section class="card">
-    <h2>Identificação da empresa</h2>
+    <h2>Painel de links da Empresa</h2>
+
+    <p class="info">
+      Informe o código da empresa para preparar os convites
+      do Cliente e do Entregador.
+    </p>
+
     <label for="empresa">Código da empresa</label>
-    <input id="empresa" type="text" placeholder="Digite o código da empresa">
-    <p class="info" id="status"></p>
+    <input
+      id="empresa"
+      type="text"
+      placeholder="Digite o código da empresa"
+      autocomplete="off"
+    >
+
+    <p id="status" role="status">
+      Informe o código da empresa.
+    </p>
   </section>
 
   <section class="card">
     <h2>Aplicativo da Empresa</h2>
     <p class="info">
-      Se você já publicou o APK da Empresa no GitHub Releases, use o botão
-      abaixo para baixá-lo.
+      Baixe o aplicativo Android da Empresa.
     </p>
-    <a id="downloadEmpresa" href="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-empresa-debug.apk">
-      BAIXAR APLICATIVO ANDROID
+
+    <a
+      class="button"
+      id="downloadEmpresa"
+      href="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-empresa-debug.apk"
+    >
+      BAIXAR APLICATIVO ANDROID — EMPRESA
+    </a>
+  </section>
+
+  <section class="card">
+    <h2>Aplicativo do Cliente</h2>
+    <p class="info">
+      Baixe o aplicativo Android do Cliente.
+    </p>
+
+    <a
+      class="button"
+      id="downloadCliente"
+      href="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-cliente-debug.apk"
+    >
+      BAIXAR APLICATIVO ANDROID — CLIENTE
+    </a>
+  </section>
+
+  <section class="card">
+    <h2>Aplicativo do Entregador</h2>
+    <p class="info">
+      Baixe o aplicativo Android do Entregador.
+    </p>
+
+    <a
+      class="button"
+      id="downloadEntregador"
+      href="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/app-entregador-debug.apk"
+    >
+      BAIXAR APLICATIVO ANDROID — ENTREGADOR
     </a>
   </section>
 
@@ -114,41 +183,64 @@
 
     <p class="info">Link para o Cliente</p>
     <p class="link-text" id="linkCliente"></p>
+
     <button type="button" onclick="copiar('cliente')">
       COPIAR LINK DO CLIENTE
     </button>
-    <a id="abrirCliente" class="secondary" href="#">ABRIR CONVITE DO CLIENTE</a>
+
+    <a
+      id="abrirCliente"
+      class="button secondary"
+      href="#"
+    >
+      ABRIR CONVITE DO CLIENTE
+    </a>
 
     <p class="info">Link para o Entregador</p>
     <p class="link-text" id="linkEntregador"></p>
+
     <button type="button" onclick="copiar('entregador')">
       COPIAR LINK DO ENTREGADOR
     </button>
-    <a id="abrirEntregador" class="secondary" href="#">ABRIR CONVITE DO ENTREGADOR</a>
+
+    <a
+      id="abrirEntregador"
+      class="button secondary"
+      href="#"
+    >
+      ABRIR CONVITE DO ENTREGADOR
+    </a>
   </section>
 
   <p class="small">
-    Esta página oferece acesso por links. Ela não substitui o sistema de
-    cadastro, autenticação, pedidos ou administração do aplicativo.
+    Esta página oferece downloads e links de convite.
+    Ela não substitui um painel administrativo com cadastro,
+    autenticação, pedidos ou gestão de entregas.
   </p>
 </main>
 
 <script>
-  const BASE = 'https://alberesbet.github.io/agua-gas-express-v13/';
+  const BASE =
+    'https://alberesbet.github.io/agua-gas-express-v13/';
+
   const params = new URLSearchParams(window.location.search);
   const campoEmpresa = document.getElementById('empresa');
   const status = document.getElementById('status');
 
-  campoEmpresa.value = (params.get('empresa') || '').toUpperCase();
+  campoEmpresa.value =
+    (params.get('empresa') || '').toUpperCase();
 
   function montarLink(perfil) {
     const codigo = campoEmpresa.value.trim().toUpperCase();
-    return BASE + 'invite?perfil=' + encodeURIComponent(perfil) +
+
+    return BASE + 'invite?perfil=' +
+      encodeURIComponent(perfil) +
       '&empresa=' + encodeURIComponent(codigo);
   }
 
   function atualizarLinks() {
     const codigo = campoEmpresa.value.trim().toUpperCase();
+
     status.textContent = codigo
       ? 'Código selecionado: ' + codigo
       : 'Informe o código da empresa para preparar os convites.';
@@ -158,6 +250,7 @@
 
     document.getElementById('linkCliente').textContent = cliente;
     document.getElementById('linkEntregador').textContent = entregador;
+
     document.getElementById('abrirCliente').href = cliente;
     document.getElementById('abrirEntregador').href = entregador;
   }
@@ -187,4 +280,3 @@
 </body>
 </html>
 ```
-
