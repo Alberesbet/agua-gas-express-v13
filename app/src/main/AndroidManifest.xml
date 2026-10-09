@@ -19,6 +19,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="alberesbet.github.io" android:pathPrefix="/agua-gas-express-v13/invite" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="aguagasexpress" android:host="invite" />
+            </intent-filter>
         </activity>
         <service android:name=".DeliveryLocationService" android:foregroundServiceType="location" android:exported="false" />
     </application>
