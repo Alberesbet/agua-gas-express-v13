@@ -91,11 +91,29 @@ function addButton(label, href, secondary=false){
   return a;
 }
 
+function appPackage(){
+  const suffix = {
+    empresa: '.empresa',
+    cliente: '.cliente',
+    entregador: '.entregador',
+    proprietario: '.desenvolvedor'
+  }[perfil] || '';
+  return 'com.example.aguagasexpress' + suffix;
+}
+
+function appIntentUrl(){
+  return 'intent://invite?perfil=' +
+    encodeURIComponent(perfil) +
+    '&empresa=' + encodeURIComponent(empresa) +
+    '&plataforma=android#Intent;scheme=aguagasexpress;package=' +
+    appPackage() + ';end';
+}
+
 function addOpenAppButton(label){
   const a = addButton(label, '#', true);
   a.addEventListener('click', function(ev){
     ev.preventDefault();
-    window.location.href = inviteUrl();
+    window.location.href = appIntentUrl();
   });
 }
 
