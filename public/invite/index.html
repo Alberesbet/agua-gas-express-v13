@@ -76,7 +76,7 @@ const apk = {
 }[perfil] || '';
 
 function inviteUrl(){
-  return base + 'invite?perfil=' +
+  return base + 'invite/?perfil=' +
     encodeURIComponent(perfil) +
     '&empresa=' + encodeURIComponent(empresa);
 }
