@@ -1812,7 +1812,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var salesMonthlyGas by remember { mutableStateOf(0) }
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var deliveryDriverNames by remember { mutableStateOf((1..6).associateWith { driver -> prefs.getString("delivery_driver_name_$driver", "Entregador $driver") ?: "Entregador $driver" }) }
-    var driverDailyStats by remember { mutableStateOf<Map<Int, Pair<Int, Int>>>(emptyMap()) }
+    var driverDailyStats by remember { mutableStateOf<Map<Int, Triple<Int, Int, Int>>>(emptyMap()) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
     var apkOperationInProgress by remember { mutableStateOf(false) }
@@ -2162,7 +2162,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 driverDailyStats = stats.documents.associate { doc ->
                                     (doc.getLong("driver") ?: 0L).toInt() to Pair(
                                         (doc.getLong("deliveries") ?: 0L).toInt(),
-                                        (doc.getLong("waterQty") ?: 0L).toInt()
+                                        (doc.getLong("waterQty") ?: 0L).toInt(),
+                                        (doc.getLong("gasQty") ?: 0L).toInt()
                                     )
                                 }
                             }
@@ -2337,7 +2338,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     "date" to today,
                     "driver" to order.assignedDriver,
                     "deliveries" to ((driverStat.getLong("deliveries") ?: 0L).toInt() + 1),
-                    "waterQty" to ((driverStat.getLong("waterQty") ?: 0L).toInt() + order.waterQty)
+                    "waterQty" to ((driverStat.getLong("waterQty") ?: 0L).toInt() + order.waterQty),
+                    "gasQty" to ((driverStat.getLong("gasQty") ?: 0L).toInt() + order.gasQty)
                 ), SetOptions.merge())
             }
             transaction.delete(orderRef)
@@ -2351,8 +2353,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 salesMonthlyWater = if (savedMonth == month) salesMonthlyWater + order.waterQty else order.waterQty
                 salesMonthlyGas = if (savedMonth == month) salesMonthlyGas + order.gasQty else order.gasQty
                 if (order.assignedDriver in 1..6) {
-                    val old = driverDailyStats[order.assignedDriver] ?: Pair(0, 0)
-                    driverDailyStats = driverDailyStats + (order.assignedDriver to Pair(old.first + 1, old.second + order.waterQty))
+                    val old = driverDailyStats[order.assignedDriver] ?: Triple(0, 0, 0)
+                    driverDailyStats = driverDailyStats + (order.assignedDriver to Triple(old.first + 1, old.second + order.waterQty, old.third + order.gasQty))
                 }
                 prefs.edit().putString("salesDailyDate", today).putString("salesMonthlyKey", month).apply()
                 firestore.collection("orders").document(order.id.toString()).collection("messages").get().addOnSuccessListener { snap ->
@@ -3074,34 +3076,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         dismissButton = { TextButton(onClick = { showResetSalesConfirm = false }) { Text("Cancelar") } }
                     )
                 }
-                Spacer(Modifier.height(12.dp))
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("NOMES DOS 6 ENTREGADORES", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                        Text("Cadastre o nome de cada pessoa. O nome aparecerá na seleção do entregador e no relatório diário.", color = Color.White, fontSize = 12.sp)
-                        (1..6).forEach { driver ->
-                            OutlinedTextField(
-                                value = deliveryDriverNames[driver].orEmpty(),
-                                onValueChange = { value -> deliveryDriverNames = deliveryDriverNames + (driver to value) },
-                                label = { Text("Entregador $driver", color = Color.White) },
-                                singleLine = true,
-                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Button(onClick = {
-                            val updates = deliveryDriverNames.mapKeys { (driver, _) -> "deliveryDriverName$driver" }
-                            companyConfigRef(firestore, companyId).set(updates, SetOptions.merge())
-                                .addOnSuccessListener {
-                                    prefs.edit().apply { deliveryDriverNames.forEach { (driver, name) -> putString("delivery_driver_name_$driver", name.trim()) } }.apply()
-                                    deliveryDriverNames = deliveryDriverNames.mapValues { it.value.trim().ifBlank { "Entregador ${it.key}" } }
-                                    message = "Nomes dos entregadores salvos."
-                                }
-                                .addOnFailureListener { e -> message = "Não foi possível salvar os nomes: ${e.localizedMessage ?: "erro no Firebase"}" }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("SALVAR NOMES DOS ENTREGADORES") }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
                 Text("MENU DA EMPRESA", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3534,10 +3508,29 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("RESUMO DE HOJE POR ENTREGADOR", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                             Text("Os totais aumentam quando uma entrega é concluída.", color = Color.White, fontSize = 11.sp)
+                            Text("Edite os nomes aqui mesmo; os pedidos expedidos e as entregas continuam nesta tela.", color = Color.White, fontSize = 11.sp)
                             (1..6).forEach { driver ->
-                                val stats = driverDailyStats[driver] ?: Pair(0, 0)
-                                Text("${deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }} — ${stats.first} viagens — ${stats.second} águas entregues", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                OutlinedTextField(
+                                    value = deliveryDriverNames[driver].orEmpty(),
+                                    onValueChange = { value -> deliveryDriverNames = deliveryDriverNames + (driver to value) },
+                                    label = { Text("Nome do entregador $driver", color = Color.White) },
+                                    singleLine = true,
+                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                val stats = driverDailyStats[driver] ?: Triple(0, 0, 0)
+                                Text("${deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }} — ${stats.first} viagens — ${stats.second} águas — ${stats.third} gás hoje", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                             }
+                            Button(onClick = {
+                                val updates = deliveryDriverNames.mapKeys { (driver, _) -> "deliveryDriverName$driver" }
+                                companyConfigRef(firestore, companyId).set(updates, SetOptions.merge())
+                                    .addOnSuccessListener {
+                                        prefs.edit().apply { deliveryDriverNames.forEach { (driver, name) -> putString("delivery_driver_name_$driver", name.trim()) } }.apply()
+                                        deliveryDriverNames = deliveryDriverNames.mapValues { it.value.trim().ifBlank { "Entregador ${it.key}" } }
+                                        message = "Nomes dos entregadores salvos."
+                                    }
+                                    .addOnFailureListener { e -> message = "Não foi possível salvar os nomes: ${e.localizedMessage ?: "erro no Firebase"}" }
+                            }, modifier = Modifier.fillMaxWidth()) { Text("SALVAR NOMES DOS ENTREGADORES") }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
