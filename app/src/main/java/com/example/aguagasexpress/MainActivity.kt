@@ -2405,20 +2405,21 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     products.forEach { product ->
                         val quantity = clientQuantities[product.name] ?: 0
                         Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF10284A)),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 if (product.isGas) Text("🔥", fontSize = 24.sp)
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                                    Text(product.name, color = Color.White, fontWeight = FontWeight.Bold,
+                                    Text(product.name, color = Ink, fontWeight = FontWeight.Bold,
                                         fontSize = if (product.name == COMBO_WATER_NAME) 12.sp else 14.sp, maxLines = 2)
-                                    Text(money(product.price), color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(money(product.price), color = Blue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                                 OutlinedButton(
                                     onClick = { if (quantity > 0) clientQuantities = clientQuantities + (product.name to quantity - 1) },
@@ -2695,30 +2696,45 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         dismissButton = { TextButton(onClick = { showResetSalesConfirm = false }) { Text("Cancelar") } }
                     )
                 }
+                Spacer(Modifier.height(12.dp))
+                Text("MENU DA EMPRESA", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(8.dp))
-                MenuButton("💧  Produtos e preços") { page = Page.PRODUCTS }
-                MenuButton("🔑  Configurar chave Pix") {
-                    pixKeyDraft = pixKey
-                    pixKeyTypeDraft = pixKeyType
-                    pixRecipientNameDraft = pixRecipientName
-                    message = ""
-                    page = Page.PIX_SETTINGS
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DashboardTile("💧  Produtos e preços", Modifier.weight(1f)) { page = Page.PRODUCTS }
+                    DashboardTile("🔑  Configurar chave Pix", Modifier.weight(1f)) {
+                        pixKeyDraft = pixKey
+                        pixKeyTypeDraft = pixKeyType
+                        pixRecipientNameDraft = pixRecipientName
+                        message = ""
+                        page = Page.PIX_SETTINGS
+                    }
                 }
-                MenuButton("🛡️  Código de autorização") {
-                    adminAuthorizationDraft = prefs.getString("admin_authorization_code", DEFAULT_ADMIN_AUTH_CODE) ?: DEFAULT_ADMIN_AUTH_CODE
-                    message = ""
-                    page = Page.ADMIN_CODE_SETTINGS
-                }
-                MenuButton("🔐  Cadastrar senha dos entregadores") {
-                    deliveryPasswordDraft = ""
-                    deliveryPasswordConfirmDraft = ""
-                    message = ""
-                    page = Page.DELIVERY_PASSWORD_SETTINGS
-                }
-                MenuButton("📥  Pedidos recebidos (${orders.count { it.status == "Pendente" }})") { page = Page.ORDERS }
-                MenuButton("🚚  Entregas (${orders.count { it.status == "Autorizado" || it.status == "Em entrega" || it.status == "Chegou ao endereço" }})") { page = Page.DELIVERY }
                 Spacer(Modifier.height(10.dp))
-                MainButton("SAIR DA ADMINISTRAÇÃO") { page = Page.HOME }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DashboardTile("🛡️  Código de autorização", Modifier.weight(1f)) {
+                        adminAuthorizationDraft = prefs.getString("admin_authorization_code", DEFAULT_ADMIN_AUTH_CODE) ?: DEFAULT_ADMIN_AUTH_CODE
+                        message = ""
+                        page = Page.ADMIN_CODE_SETTINGS
+                    }
+                    DashboardTile("🔐  Cadastrar senha dos entregadores", Modifier.weight(1f)) {
+                        deliveryPasswordDraft = ""
+                        deliveryPasswordConfirmDraft = ""
+                        message = ""
+                        page = Page.DELIVERY_PASSWORD_SETTINGS
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DashboardTile("📥  Pedidos recebidos (${orders.count { it.status == "Pendente" }})", Modifier.weight(1f)) { page = Page.ORDERS }
+                    DashboardTile("🚚  Entregas (${orders.count { it.status == "Autorizado" || it.status == "Em entrega" || it.status == "Chegou ao endereço" }})", Modifier.weight(1f)) { page = Page.DELIVERY }
+                }
+                Spacer(Modifier.height(14.dp))
+                OutlinedButton(
+                    onClick = { page = Page.HOME },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF54749A))
+                ) { Text("SAIR DA ADMINISTRAÇÃO", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 Spacer(Modifier.height(12.dp))
 
             }
@@ -3525,6 +3541,26 @@ private fun MenuButton(text: String, onClick: () -> Unit) {
         Text(text, Modifier.fillMaxWidth().padding(20.dp), color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
     }
     Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+private fun DashboardTile(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier.height(112.dp).clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 17.sp)
+            Spacer(Modifier.height(7.dp))
+            Box(Modifier.width(34.dp).height(3.dp).background(Blue, RoundedCornerShape(50)))
+        }
+    }
 }
 
 @Composable
