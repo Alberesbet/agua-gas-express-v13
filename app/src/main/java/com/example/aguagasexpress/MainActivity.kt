@@ -79,7 +79,7 @@ private val Green = Color(0xFF16834A)
 
 // Links compartilhados: HTTPS para o WhatsApp reconhecer como clicável.
 // A página /invite redireciona para o aplicativo quando instalado.
-private const val WEB_INVITE_BASE_URL = "https://alberesbet.github.io/agua-gas-express-v13/invite/"
+private const val WEB_INVITE_BASE_URL = "https://agua-e-gas-express.web.app/invite"
 // Um único link por convite. O Android App Link abre o aplicativo quando ele já está instalado;
 // caso contrário, o mesmo HTTPS cai na página Web de entrada/download.
 private fun makeInviteLink(profile: String, companyCode: String, platform: String = ""): String {
