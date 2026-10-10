@@ -293,8 +293,32 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
+    private fun receiveSharedApk(incomingIntent: Intent?) {
+        if (incomingIntent?.action != Intent.ACTION_SEND) return
+        val uri = incomingIntent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM) ?: return
+        val hint = incomingIntent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
+        val role = if (hint.contains("Entregador", ignoreCase = true)) "Entregador" else "Cliente"
+        Thread {
+            try {
+                val dir = java.io.File(filesDir, "downloaded-apks").apply { mkdirs() }
+                val name = if (role == "Cliente") "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+                val temp = java.io.File(dir, "$name.part")
+                val target = java.io.File(dir, name)
+                contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
+                    ?: throw IllegalStateException("Não foi possível ler o APK recebido.")
+                val valid = temp.length() >= 100_000L && try { java.util.zip.ZipFile(temp).use { it.getEntry("AndroidManifest.xml") != null } } catch (_: Exception) { false }
+                if (!valid) { temp.delete(); throw IllegalStateException("O arquivo recebido não é um APK válido.") }
+                if (target.exists()) target.delete()
+                if (!temp.renameTo(target)) { temp.copyTo(target, overwrite = true); temp.delete() }
+                runOnUiThread { android.widget.Toast.makeText(this, "APK do $role recebido e guardado. Abra Administração > Enviar APKs para compartilhá-lo.", android.widget.Toast.LENGTH_LONG).show() }
+            } catch (e: Exception) {
+                runOnUiThread { android.widget.Toast.makeText(this, "Falha ao receber APK: " + (e.localizedMessage ?: "tente novamente"), android.widget.Toast.LENGTH_LONG).show() }
+            }
+        }.start()
+    }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        receiveSharedApk(intent)
         setIntent(intent)
         val prefs = getSharedPreferences("agua_gas_preferences", Context.MODE_PRIVATE)
         if (applyInviteIntent(intent, prefs)) {
@@ -326,6 +350,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         super.onCreate(savedInstanceState)
+        receiveSharedApk(intent)
         if (diagnosticProfile) {
             val diagnosticPrefs = getSharedPreferences("agua_gas_crash_diagnostics", Context.MODE_PRIVATE)
             val previousCrash = diagnosticPrefs.getString("last_crash", null)
@@ -1680,6 +1705,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/vnd.android.package-archive"
                 putExtra(Intent.EXTRA_STREAM, apkUri)
+                putExtra(Intent.EXTRA_TEXT, "AguaGasExpress-$role.apk")
                 clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", apkUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
@@ -3589,6 +3615,7 @@ private fun ApkTransferPanel() {
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "application/vnd.android.package-archive"
                 putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TEXT, "AguaGasExpress-$role.apk")
                 clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
