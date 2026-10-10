@@ -43,7 +43,7 @@ jobs:
 
       - name: Build developer, client and deliverer APKs
         run: |
-          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
 
       - name: Verify all three APKs exist
         shell: bash
