@@ -1128,6 +1128,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterStatus by remember { mutableStateOf("") }
     var masterCompanyPhone by remember { mutableStateOf("") }
     var masterCompanyDetailsOpen by remember { mutableStateOf(false) }
+    var showDeactivateLicenseConfirm by remember { mutableStateOf(false) }
     var masterCompanyId by remember { mutableStateOf("") }
     var masterCompanyDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
     var masterLicensePermanent by remember { mutableStateOf(false) }
@@ -1356,7 +1357,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             if (masterLoggedIn) loadLatestMasterCompany()
         }
 
-        if (masterLoggedIn) {
+        if (false && masterLoggedIn) {
             ApkTransferPanel()
             Spacer(Modifier.height(14.dp))
         }
@@ -1419,6 +1420,37 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ ENCERRAR TESTE E TORNAR DEFINITIVA") }
                 } else {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
+                if (masterCompanyActive) {
+                    Button(
+                        enabled = !loading,
+                        onClick = { showDeactivateLicenseConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB91C1C))
+                    ) { Text("DESATIVAR LICENÇA DA EMPRESA") }
+                } else {
+                    Button(
+                        enabled = !loading,
+                        onClick = {
+                            loading = true
+                            firestore.collection("companies").document(masterCompanyId).update(
+                                mapOf("active" to true, "activated" to true, "licenseStatus" to if (masterLicensePermanent) "PERMANENT" else "TRIAL")
+                            ).addOnSuccessListener {
+                                masterCompanyActive = true
+                                masterCompanyActivated = true
+                                masterLicenseStatus = if (masterLicensePermanent) "PERMANENT" else "TRIAL"
+                                masterCompanyMessage = "Licença reativada."
+                                loading = false
+                                loadLatestMasterCompany()
+                            }.addOnFailureListener { e ->
+                                loading = false
+                                masterCompanyMessage = "Não foi possível reativar a licença: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Green)
+                    ) { Text("REATIVAR LICENÇA DA EMPRESA") }
                 }
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
@@ -2840,13 +2872,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { showShareLinksDialog = true }) {
-                        Text("📦 Enviar APKs", color = LightBlue)
-                    }
+                    // A gestão de APKs foi retirada desta tela para evitar envio de versões antigas.
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
 
-                if (showShareLinksDialog) {
+                if (false && showShareLinksDialog) {
                     AlertDialog(
                         onDismissRequest = { showShareLinksDialog = false },
                         title = { Text("📦 Preparar e enviar APKs") },
