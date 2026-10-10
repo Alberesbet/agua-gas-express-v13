@@ -22,7 +22,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: gradle
 
       - name: Set up Gradle with dependency and build cache
         uses: gradle/actions/setup-gradle@v4
