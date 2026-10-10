@@ -1687,8 +1687,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         var customerRegistration: ListenerRegistration? = null
         var disposed = false
         val auth = FirebaseAuth.getInstance()
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            if (!token.isNullOrBlank()) prefs.edit().putString("customer_fcm_token", token).apply()
+        // A obtenção do token de notificações é opcional para abrir o app.
+        // Uma falha do Firebase Messaging não deve derrubar Cliente e Entregador na inicialização.
+        runCatching {
+            FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    if (!token.isNullOrBlank()) {
+                        prefs.edit().putString("customer_fcm_token", token).apply()
+                    }
+                }
+                .addOnFailureListener {
+                    // O app continua funcionando mesmo sem token de notificações.
+                }
         }
 
         fun attachListeners(uid: String) {
