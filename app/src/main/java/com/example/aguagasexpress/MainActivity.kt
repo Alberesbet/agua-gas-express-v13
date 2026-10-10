@@ -3760,11 +3760,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     Button(onClick = {
                                         if (target != null) {
                                             updateOrder(target.copy(status = "Autorizado", assignedDriver = driver, approvalSentAt = if (target.approvalSentAt == 0L) System.currentTimeMillis() else target.approvalSentAt))
-                                            message = "Pedido aprovado e enviado para o Entregador $driver. O cliente será avisado automaticamente."
+                                            message = "Pedido aprovado e enviado para ${deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }}. O cliente será avisado automaticamente."
                                         }
                                         driverSelectionOrderId = null
                                     }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = if (target?.assignedDriver == driver) Green else Blue)) {
-                                        Text("🚚 ENTREGADOR $driver")
+                                        Text("🚚 ${deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }}")
                                     }
                                 }
                             }
