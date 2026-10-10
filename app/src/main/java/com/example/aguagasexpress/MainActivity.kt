@@ -1179,6 +1179,11 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             if (masterLoggedIn) loadLatestMasterCompany()
         }
 
+        if (masterLoggedIn) {
+            ApkTransferPanel()
+            Spacer(Modifier.height(14.dp))
+        }
+
         if (mode == "master") {
             if (!masterLoggedIn) {
                 Text("DESENVOLVEDOR / PROPRIETÁRIO", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
@@ -3304,6 +3309,114 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(20.dp))
                 MainButton("VOLTAR") { page = Page.LOGIN }
             }
+        }
+    }
+}
+
+
+@Composable
+private fun ApkTransferPanel() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
+
+    fun importApk(role: String, uri: Uri?) {
+        if (uri == null || busy) return
+        busy = true
+        status = "Guardando o APK do $role..."
+        scope.launch {
+            try {
+                val fileName = if (role == "Cliente") "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+                withContext(Dispatchers.IO) {
+                    val dir = java.io.File(context.filesDir, "developer-apks").apply { mkdirs() }
+                    val target = java.io.File(dir, fileName)
+                    val temp = java.io.File(dir, "$fileName.part")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        temp.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("Não foi possível ler o arquivo escolhido.")
+                    if (temp.length() < 100_000L) {
+                        temp.delete()
+                        throw IllegalStateException("O arquivo parece incompleto. Escolha o APK correto.")
+                    }
+                    if (target.exists()) target.delete()
+                    if (!temp.renameTo(target)) {
+                        temp.copyTo(target, overwrite = true)
+                        temp.delete()
+                    }
+                }
+                status = "APK do $role guardado no desenvolvedor. Você pode enviá-lo agora ou mais tarde."
+            } catch (e: Exception) {
+                status = "Falha ao guardar o APK do $role: " + (e.localizedMessage ?: "tente novamente")
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    val chooseClient = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        importApk("Cliente", uri)
+    }
+    val chooseDeliverer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        importApk("Entregador", uri)
+    }
+
+    fun shareApk(role: String) {
+        try {
+            val fileName = if (role == "Cliente") "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+            val file = java.io.File(java.io.File(context.filesDir, "developer-apks"), fileName)
+            if (!file.isFile || file.length() < 100_000L) {
+                status = "Primeiro escolha o APK do $role no botão ESCOLHER APK."
+                return
+            }
+            val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(send, "Enviar APK do $role"))
+            status = "Escolha WhatsApp ou outro aplicativo para enviar o APK do $role."
+        } catch (e: Exception) {
+            status = "Falha ao compartilhar o APK do $role: " + (e.localizedMessage ?: "tente novamente")
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF173B62))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("📦 APKs PARA ENVIAR À EMPRESA", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Baixe ou gere os APKs no Android. Escolha cada arquivo aqui uma vez; eles ficam guardados no aplicativo do desenvolvedor para você enviar quando quiser.", color = Color.White, fontSize = 13.sp)
+            OutlinedButton(
+                onClick = { chooseClient.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("📥 ESCOLHER APK DO CLIENTE") }
+            Button(
+                onClick = { shareApk("Cliente") },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("👤 ENVIAR APK DO CLIENTE") }
+            OutlinedButton(
+                onClick = { chooseDeliverer.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("📥 ESCOLHER APK DO ENTREGADOR") }
+            Button(
+                onClick = { shareApk("Entregador") },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
+            if (status.isNotBlank()) {
+                Text(status, color = Color(0xFFB9E5FF), fontSize = 12.sp)
+            }
+            Text("Os arquivos permanecem salvos enquanto os dados do app não forem apagados e o app não for desinstalado.", color = Color(0xFFD8E6F4), fontSize = 11.sp)
         }
     }
 }
