@@ -961,6 +961,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterCompanyPhone by remember { mutableStateOf("") }
     var masterCompanyDetailsOpen by remember { mutableStateOf(false) }
     var masterCompanyId by remember { mutableStateOf("") }
+    var masterCompanyDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
     var masterLicensePermanent by remember { mutableStateOf(false) }
     var masterLicenseExpiresAt by remember { mutableStateOf(0L) }
     var masterLicenseStatus by remember { mutableStateOf("") }
@@ -997,7 +998,8 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             if (uid.isBlank()) return@ensureFirebase
             firestore.collection("companies").whereEqualTo("ownerUid", uid).get()
                 .addOnSuccessListener { snap ->
-                    val doc = snap.documents.maxByOrNull { it.getLong("createdAt") ?: 0L } ?: return@addOnSuccessListener
+                    masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                    val doc = masterCompanyDocs.firstOrNull() ?: return@addOnSuccessListener
                     masterCompanyId = doc.id
                     masterCompanyCode = doc.getString("companyCode") ?: ""
                     masterCompanyName = doc.getString("name") ?: "Empresa"
@@ -1259,6 +1261,49 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Text("Cadastre a empresa com nome, e-mail autorizado e telefone. O e-mail continua sendo a autorização para ela abrir a conta.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = { masterRegistration = true; mode = "register"; error = ""; masterStatus = ""; masterCompanyEmail = ""; masterCompanyName = ""; masterCompanyPhone = ""; trialDays = "30"; masterPermanent = false }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("🏪 CADASTRAR EMPRESA", fontWeight = FontWeight.ExtraBold) }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("EMPRESAS CADASTRADAS (${masterCompanyDocs.size})", color = LightBlue, fontWeight = FontWeight.ExtraBold)
+                    TextButton(onClick = { loadLatestMasterCompany() }) { Text("ATUALIZAR", color = Color.White) }
+                }
+                if (masterCompanyDocs.isEmpty()) {
+                    Text("Nenhuma empresa encontrada para esta conta. Toque em Atualizar para consultar novamente.", color = Color.White, fontSize = 12.sp)
+                } else {
+                    masterCompanyDocs.forEach { companyDoc ->
+                        val listedName = companyDoc.getString("name") ?: "Empresa"
+                        val listedEmail = companyDoc.getString("email") ?: companyDoc.getString("authorizedEmail") ?: ""
+                        val listedCode = companyDoc.getString("companyCode") ?: ""
+                        val listedActive = companyDoc.getBoolean("active") != false
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF173B62)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                                masterCompanyId = companyDoc.id
+                                masterCompanyCode = listedCode
+                                masterCompanyName = listedName
+                                masterCompanyEmail = listedEmail
+                                masterCompanyPhone = companyDoc.getString("companyPhone") ?: ""
+                                masterLicensePermanent = companyDoc.getBoolean("licensePermanent") ?: false
+                                masterLicenseExpiresAt = companyDoc.getLong("licenseExpiresAt") ?: 0L
+                                masterLicenseStatus = companyDoc.getString("licenseStatus") ?: if (masterLicensePermanent) "PERMANENT" else "TRIAL"
+                                masterLicenseDays = (companyDoc.getLong("licenseDays") ?: 0L).toInt()
+                                masterCompanyActivated = companyDoc.getBoolean("activated") ?: false
+                                masterCompanyActive = listedActive
+                                masterCompanyCreatedAt = companyDoc.getLong("createdAt") ?: 0L
+                                masterCompanyVersion = companyDoc.getString("appVersion") ?: "11.0-test"
+                                masterCompanyDetailsOpen = true
+                                masterCompanyEmailDraft = listedEmail
+                                masterCompanyMessage = ""
+                            }
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(listedName, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(listedEmail, color = LightBlue, fontSize = 12.sp)
+                                Text("Código: ${listedCode} • ${if (listedActive) "Ativa" else "Inativa"}", color = Color.White, fontSize = 11.sp)
+                                Text("Toque para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
                 if (masterCompanyCode.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { masterCompanyDetailsOpen = true; masterCompanyEmailDraft = masterCompanyEmail; masterCompanyMessage = "" }) {
