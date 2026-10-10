@@ -497,7 +497,7 @@ private fun announceCustomerArrival(context: Context) {
 private fun announcePaymentConfirmed(context: Context) {
     announceCustomerVoice(
         context,
-        "Seu pedido foi confirmado.",
+        "Pagamento confirmado. Seu pedido foi confirmado.",
         "aguagas_pagamento_confirmado"
     )
 }
@@ -742,10 +742,27 @@ private fun createOrderReceiptPdf(context: Context, order: Order, companyName: S
 }
 
 
+private fun viewOrderReceipt(context: Context, order: Order, companyName: String) {
+    val uri = createOrderReceiptPdf(context, order, companyName)
+    if (uri == null) {
+        android.widget.Toast.makeText(context, "Não foi possível gerar o recibo em PDF neste aparelho.", android.widget.Toast.LENGTH_LONG).show()
+        return
+    }
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Visualizar recibo"))
+    } catch (_: Exception) {
+        android.widget.Toast.makeText(context, "Não há aplicativo para abrir PDF instalado. Use a opção de enviar PDF.", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
 private fun shareOrderReceipt(context: Context, order: Order, companyName: String) {
     val uri = createOrderReceiptPdf(context, order, companyName)
     if (uri == null) {
-        android.widget.Toast.makeText(context, "O PDF exige Android 10 ou superior nesta versão.", android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(context, "Não foi possível gerar o recibo em PDF neste aparelho.", android.widget.Toast.LENGTH_LONG).show()
         return
     }
     try {
@@ -1258,7 +1275,36 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível acrescentar dias: ${e.localizedMessage ?: "erro no Firebase"}" }
     }
 
-    fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
+    fun setCompanyTrial(days: Int) {
+        val id = masterCompanyId
+        if (id.isBlank()) { masterCompanyMessage = "Empresa não encontrada."; return }
+        if (days !in listOf(10, 15, 30)) { masterCompanyMessage = "Escolha um plano de teste válido."; return }
+        val expiry = System.currentTimeMillis() + days * 24L * 60L * 60L * 1000L
+        loading = true
+        firestore.collection("companies").document(id).update(mapOf(
+            "licensePermanent" to false,
+            "licenseStatus" to "TRIAL",
+            "licenseDays" to days,
+            "licenseExpiresAt" to expiry,
+            "active" to true,
+            "activated" to true
+        )).addOnSuccessListener {
+            masterLicensePermanent = false
+            masterLicenseStatus = "TRIAL"
+            masterLicenseDays = days
+            masterLicenseExpiresAt = expiry
+            masterCompanyActive = true
+            masterCompanyActivated = true
+            masterCompanyMessage = "Plano de teste de $days dias ativado."
+            loading = false
+            loadLatestMasterCompany()
+        }.addOnFailureListener { e ->
+            loading = false
+            masterCompanyMessage = "Não foi possível ativar o teste: ${e.localizedMessage ?: "erro no Firebase"}"
+        }
+    }
+
+    fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "")
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
         val direct = makeInviteLink("empresa", normalized)
@@ -1412,6 +1458,18 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(10.dp))
                 Text("CONTROLE DA LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 if (!masterLicensePermanent) {
+                    Text("LIBERAR / TROCAR PLANO DE TESTE", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        listOf(10, 15, 30).forEach { days ->
+                            Button(
+                                enabled = !loading,
+                                onClick = { setCompanyTrial(days) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = if (masterLicenseDays == days) Green else Color(0xFF315A85))
+                            ) { Text("$days DIAS", fontSize = 11.sp) }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(masterExtensionDays, { masterExtensionDays = it.filter(Char::isDigit).take(3) }, label = { Text("Dias a acrescentar") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         Button(enabled = !loading, onClick = { extendCompanyTrial() }, modifier = Modifier.weight(1f)) { Text("+ DIAS") }
@@ -1443,7 +1501,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB91C1C))
-                    ) { Text("DESATIVAR LICENÇA DA EMPRESA") }
+                    ) { Text(if (masterLicensePermanent) "CANCELAR / DESATIVAR LICENÇA" else "CANCELAR PLANO DE TESTE") }
                 } else {
                     Button(
                         enabled = !loading,
@@ -2599,8 +2657,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             Text("Itens: ${lastClientOrder.items}", color = Ink, fontSize = 13.sp)
                                             Text("Total: ${money(lastClientOrder.total)}", color = Ink, fontWeight = FontWeight.Bold)
                                             Spacer(Modifier.height(7.dp))
-                                            Button(onClick = { shareOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
-                                                Text("📄 GERAR PDF E COMPARTILHAR")
+                                            Button(onClick = { viewOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("👁 VISUALIZAR RECIBO")
+                                            }
+                                            OutlinedButton(onClick = { shareOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("📄 ENVIAR RECIBO EM PDF")
                                             }
                                         }
                                     }
