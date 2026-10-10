@@ -431,6 +431,9 @@ class MainActivity : ComponentActivity() {
                                         .remove("invite_company_code")
                                         .remove("invite_profile")
                                         .apply()
+                                    // Limpa o link recebido antes de recriar a Activity, evitando
+                                    // processar o mesmo convite repetidamente.
+                                    setIntent(Intent(this, MainActivity::class.java))
                                     recreate()
                                 }
                             }
