@@ -1464,14 +1464,30 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     ) { apkUri ->
         if (apkUri != null) {
             try {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/vnd.android.package-archive"
-                    putExtra(Intent.EXTRA_STREAM, apkUri)
-                    clipData = android.content.ClipData.newUri(context.contentResolver, "APK $apkRoleToShare", apkUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val selectedName = context.contentResolver.query(
+                    apkUri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
+                }.orEmpty()
+                val expectedToken = if (apkRoleToShare.equals("Cliente", ignoreCase = true)) "cliente" else "entregador"
+                if (!selectedName.endsWith(".apk", ignoreCase = true) ||
+                    !selectedName.contains(expectedToken, ignoreCase = true)
+                ) {
+                    message = "Arquivo incorreto. Selecione o APK do $apkRoleToShare (arquivo .apk com '$expectedToken' no nome)."
+                } else {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/vnd.android.package-archive"
+                        putExtra(Intent.EXTRA_STREAM, apkUri)
+                        clipData = android.content.ClipData.newUri(context.contentResolver, "APK $apkRoleToShare", apkUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $apkRoleToShare"))
+                    showShareLinksDialog = false
                 }
-                context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $apkRoleToShare"))
-                showShareLinksDialog = false
             } catch (e: Exception) {
                 message = "Não foi possível compartilhar o APK selecionado: ${e.localizedMessage ?: "tente novamente"}"
             }
