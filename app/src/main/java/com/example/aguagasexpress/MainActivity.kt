@@ -1778,6 +1778,26 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             message = "Não foi possível compartilhar o APK do $role: " + (e.localizedMessage ?: "tente novamente")
         }
     }
+    fun shareProfileInvite(profile: String, label: String) {
+        val code = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
+        if (code.isBlank()) {
+            message = "O código da empresa ainda não está configurado. Reabra o cadastro da empresa e tente novamente."
+            return
+        }
+        val directLink = makeInviteLink(profile, code)
+        val shareText = "Água & Gás Express — convite para $label\n\n$directLink\n\nInstale o APK de $label e abra este link para vincular o aplicativo à empresa."
+        try {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — convite para $label")
+                putExtra(Intent.EXTRA_TEXT, shareText)
+            }
+            context.startActivity(Intent.createChooser(intent, "Enviar link do $label"))
+        } catch (e: Exception) {
+            message = "Não foi possível compartilhar o link: ${e.localizedMessage ?: "tente novamente"}"
+        }
+    }
+
     var clientName by remember { mutableStateOf(prefs.getString("client_name", "") ?: "") }
     var clientPhone by remember { mutableStateOf(prefs.getString("client_phone", "") ?: "") }
     var clientDocType by remember { mutableStateOf(prefs.getString("client_doc_type", "CPF") ?: "CPF") }
@@ -2786,6 +2806,21 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("🔒 Licença de uso da empresa — não vender, ceder ou revender o aplicativo.", color = Color(0xFFFFD0A8), fontSize = 11.sp, textAlign = TextAlign.Center)
                         Text("Licença: ${trialExpiryLabel(prefs)}", color = if (localTrialActive(prefs)) Green else Color(0xFFFF6B6B), fontWeight = FontWeight.Bold)
                         Text("Chave da licença: ${prefs.getString("license_key", "—") ?: "—"}", color = LightBlue, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("🔗 VINCULAR CLIENTES E ENTREGADORES", color = LightBlue, fontWeight = FontWeight.ExtraBold)
+                        Text("Envie estes links depois de instalar os APKs. Assim, os pedidos do cliente aparecem nesta empresa e no aplicativo do entregador.", color = Color.White, fontSize = 12.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { shareProfileInvite("cliente", "Cliente") }, modifier = Modifier.weight(1f)) {
+                                Text("LINK DO CLIENTE")
+                            }
+                            Button(onClick = { shareProfileInvite("entregador", "Entregador") }, modifier = Modifier.weight(1f)) {
+                                Text("LINK DO ENTREGADOR")
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
