@@ -66,13 +66,13 @@ const actions = document.getElementById('actions');
 const info = document.getElementById('info');
 
 const base = 'https://alberesbet.github.io/agua-gas-express-v13/';
-const release = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/v1.0.0/';
+const downloads = 'https://alberesbet.github.io/agua-gas-express-v13/downloads/';
 
 const apk = {
-  empresa: release + 'app-empresa-debug.apk',
-  cliente: release + 'app-cliente-debug.apk',
-  entregador: release + 'app-entregador-debug.apk',
-  proprietario: release + 'app-desenvolvedor-debug.apk'
+  empresa: downloads + 'AguaGasExpress-desenvolvedor.apk',
+  cliente: downloads + 'AguaGasExpress-cliente.apk',
+  entregador: downloads + 'AguaGasExpress-entregador.apk',
+  proprietario: downloads + 'AguaGasExpress-desenvolvedor.apk'
 }[perfil] || '';
 
 function inviteUrl(){
@@ -93,7 +93,9 @@ function addButton(label, href, secondary=false){
 
 function appPackage(){
   // O projeto Android publicado usa um único applicationId para todos os perfis.
-  return 'com.example.aguagasexpress';
+  return perfil === 'cliente' ? 'com.example.aguagasexpress.cliente' :
+    perfil === 'entregador' ? 'com.example.aguagasexpress.entregador' :
+    'com.example.aguagasexpress';
 }
 
 function appIntentUrl(){
