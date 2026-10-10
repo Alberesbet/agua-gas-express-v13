@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: build-three-apks-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-apks:
@@ -27,29 +27,28 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Cache Gradle dependencies
+      - name: Cache Gradle dependencies only
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          path: ~/.gradle/caches
+          key: gradle-caches-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            gradle-${{ runner.os }}-
+            gradle-caches-${{ runner.os }}-
 
-      - name: Fix Gradle wrapper executable permissions
+      - name: Install Gradle with executable permissions
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x ./gradlew
-          find "$HOME/.gradle/wrapper/dists/gradle-8.13-bin" -type f -path '*/bin/gradle' -exec chmod +x {} + 2>/dev/null || true
-          ./gradlew --version
-          find "$HOME/.gradle/wrapper/dists/gradle-8.13-bin" -type f -path '*/bin/gradle' -exec chmod +x {} +
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle-8.13-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-8.13-bin.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
 
       - name: Build all three APKs in one Gradle invocation
-        run: ./gradlew --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
+        run: |
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
 
-      - name: Verify and rename the three APKs
+      - name: Verify and rename all three APKs
         shell: bash
         run: |
           set -euo pipefail
@@ -60,6 +59,7 @@ jobs:
           test -s dist/AguaGasExpress-Desenvolvedor.apk
           test -s dist/AguaGasExpress-Cliente.apk
           test -s dist/AguaGasExpress-Entregador.apk
+          sha256sum dist/*.apk
           ls -lh dist/
 
       - name: Upload all three APKs as build artifacts
@@ -68,7 +68,7 @@ jobs:
           name: AguaGasExpress-tres-APKs
           path: dist/*.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Publish downloadable APKs for the company app
         uses: softprops/action-gh-release@v2
@@ -78,7 +78,7 @@ jobs:
           name: AguaGasExpress - APKs da versão mais recente
           body: |
             APKs gerados juntos pela compilação automatizada.
-            - Desenvolvedor: mantém o aplicativo administrativo.
+            - Desenvolvedor: aplicativo administrativo.
             - Cliente: instalador para clientes.
             - Entregador: instalador para entregadores.
           prerelease: true
