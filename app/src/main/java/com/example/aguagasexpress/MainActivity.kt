@@ -390,11 +390,65 @@ class MainActivity : ComponentActivity() {
         // Os APKs públicos de cliente e entregador não dependem de convite.
         // Cada variante abre diretamente no fluxo de cadastro/acesso do seu perfil.
         if (defaultProfile == "cliente" || defaultProfile == "entregador") {
+            val profileRole = if (defaultProfile == "cliente") "customer" else "delivery"
+            val invitedCodeForProfile = normalizeCompanyCode(prefs.getString("invite_company_code", "").orEmpty())
             prefs.edit()
-                .putString("company_role", if (defaultProfile == "cliente") "customer" else "delivery")
+                .putString("company_role", profileRole)
                 .remove("invite_profile")
-                .remove("invite_company_code")
                 .apply()
+
+            // Se o cliente/entregador chegou por um convite da empresa, vincular este aparelho
+            // ao ID real da empresa antes de enviar ou consultar pedidos. Sem isso, cada app
+            // filtraria os pedidos por um companyId diferente e o fluxo não se encontraria.
+            if (invitedCodeForProfile.isNotBlank()) {
+                val auth = FirebaseAuth.getInstance()
+                val companyStore = FirebaseFirestore.getInstance()
+                fun resolveCompanyInvite() {
+                    companyStore.collection("companies")
+                        .whereEqualTo("companyCode", invitedCodeForProfile)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            val companyDoc = snapshot.documents.firstOrNull()
+                            val isPermanent = companyDoc?.getBoolean("licensePermanent") ?: false
+                            val expiry = companyDoc?.getLong("licenseExpiresAt") ?: 0L
+                            when {
+                                companyDoc == null -> android.widget.Toast.makeText(this, "O código do convite não corresponde a uma empresa cadastrada.", android.widget.Toast.LENGTH_LONG).show()
+                                companyDoc.getBoolean("active") == false -> android.widget.Toast.makeText(this, "Esta empresa está desativada. Fale com o suporte.", android.widget.Toast.LENGTH_LONG).show()
+                                companyDoc.getBoolean("activated") != true -> android.widget.Toast.makeText(this, "A empresa ainda precisa concluir o cadastro antes de receber pedidos.", android.widget.Toast.LENGTH_LONG).show()
+                                !isPermanent && expiry > 0L && System.currentTimeMillis() >= expiry -> android.widget.Toast.makeText(this, "A licença desta empresa expirou.", android.widget.Toast.LENGTH_LONG).show()
+                                else -> {
+                                    val companyName = companyDoc.getString("name") ?: "Empresa"
+                                    val companyCode = companyDoc.getString("companyCode") ?: invitedCodeForProfile
+                                    val companyPhone = companyDoc.getString("companyPhone") ?: ""
+                                    val origin = companyDoc.getString("originAddress") ?: ""
+                                    saveCompanyLocal(
+                                        prefs, companyDoc.id, companyName, companyCode, expiry,
+                                        isPermanent, companyDoc.getString("licenseKey") ?: "", companyPhone, origin
+                                    )
+                                    prefs.edit()
+                                        .putString("company_role", profileRole)
+                                        .remove("invite_company_code")
+                                        .remove("invite_profile")
+                                        .apply()
+                                    recreate()
+                                }
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            android.widget.Toast.makeText(this, "Não foi possível vincular à empresa: ${e.localizedMessage ?: "verifique a internet e o Firebase"}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                }
+                if (auth.currentUser != null) {
+                    resolveCompanyInvite()
+                } else {
+                    auth.signInAnonymously()
+                        .addOnSuccessListener { resolveCompanyInvite() }
+                        .addOnFailureListener { e ->
+                            android.widget.Toast.makeText(this, "Não foi possível autenticar para vincular à empresa: ${e.localizedMessage ?: "verifique o Firebase"}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
         } else if (!hasInvite &&
             !( !prefs.getString("company_id", "").isNullOrBlank() &&
                 prefs.getBoolean("company_authenticated", false))) {
