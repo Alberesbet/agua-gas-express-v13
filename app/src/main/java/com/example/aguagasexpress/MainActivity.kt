@@ -329,10 +329,17 @@ class MainActivity : ComponentActivity() {
                 .remove("invite_profile")
                 .remove("invite_company_code")
                 .apply()
-        } else if (!hasInvite && prefs.getString("company_id", "").isNullOrBlank() &&
-            prefs.getString("developer_password_hash", "").isNullOrBlank() &&
-            prefs.getString("invite_profile", "").isNullOrBlank()) {
-            prefs.edit().putString("invite_profile", defaultProfile).apply()
+        } else if (!hasInvite &&
+            !( !prefs.getString("company_id", "").isNullOrBlank() &&
+                prefs.getBoolean("company_authenticated", false))) {
+            // Sem convite aberto nesta inicialização e sem sessão válida da empresa,
+            // o APK proprietário deve voltar à tela do desenvolvedor. Isso evita que
+            // um perfil de convite antigo (empresa/cliente/entregador) desvie a tela inicial.
+            if (defaultProfile == "proprietario") {
+                prefs.edit().putString("invite_profile", "proprietario").apply()
+            } else if (prefs.getString("invite_profile", "").isNullOrBlank()) {
+                prefs.edit().putString("invite_profile", defaultProfile).apply()
+            }
         }
 
         setContent {
@@ -907,10 +914,10 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var mode by remember {
         mutableStateOf(
             when {
+                !prefs.getString("company_id", "").isNullOrBlank() && prefs.getBoolean("company_authenticated", false) -> "app"
                 inviteProfile == "proprietario" -> "master"
                 inviteProfile == "empresa" && prefs.getString("company_id", "").isNullOrBlank() -> "company_email"
                 inviteProfile == "cliente" || inviteProfile == "entregador" -> "join"
-                !prefs.getString("company_id", "").isNullOrBlank() && prefs.getBoolean("company_authenticated", false) -> "app"
                 !prefs.getString("company_id", "").isNullOrBlank() -> "login"
                 else -> "master"
             }
