@@ -1801,6 +1801,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var salesMonthlyWater by remember { mutableStateOf(0) }
     var salesMonthlyGas by remember { mutableStateOf(0) }
     var registeredCustomerCount by remember { mutableStateOf(0) }
+    var deliveryDriverNames by remember { mutableStateOf((1..6).associateWith { driver -> prefs.getString("delivery_driver_name_$driver", "Entregador $driver") ?: "Entregador $driver" }) }
+    var driverDailyStats by remember { mutableStateOf<Map<Int, Pair<Int, Int>>>(emptyMap()) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
     var apkOperationInProgress by remember { mutableStateOf(false) }
@@ -2134,6 +2136,26 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         }
                         val currentDay = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
                         val currentMonth = java.text.SimpleDateFormat("yyyy-MM", Locale.US).format(java.util.Date())
+                        deliveryDriverNames = (1..6).associateWith { driver ->
+                            snapshot.getString("deliveryDriverName$driver")?.takeIf { it.isNotBlank() }
+                                ?: prefs.getString("delivery_driver_name_$driver", "Entregador $driver")
+                                ?: "Entregador $driver"
+                        }
+                        prefs.edit().apply {
+                            deliveryDriverNames.forEach { (driver, name) -> putString("delivery_driver_name_$driver", name) }
+                        }.apply()
+                        firestore.collection("deliveryStats")
+                            .whereEqualTo("companyId", companyId)
+                            .whereEqualTo("date", currentDay)
+                            .get()
+                            .addOnSuccessListener { stats ->
+                                driverDailyStats = stats.documents.associate { doc ->
+                                    (doc.getLong("driver") ?: 0L).toInt() to Pair(
+                                        (doc.getLong("deliveries") ?: 0L).toInt(),
+                                        (doc.getLong("waterQty") ?: 0L).toInt()
+                                    )
+                                }
+                            }
                         prefs.edit().putString("salesDailyDate", snapshot.getString("salesDailyDate") ?: "")
                             .putString("salesMonthlyKey", snapshot.getString("salesMonthlyKey") ?: "").apply()
                         salesDailyWater = if (snapshot.getString("salesDailyDate") == currentDay) (snapshot.getLong("salesDailyWater") ?: 0L).toInt() else 0
@@ -2159,7 +2181,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             "companyNeighborhood" to (prefs.getString("company_neighborhood", "") ?: ""),
                             "companyCity" to (prefs.getString("company_city", "") ?: ""),
                             "companyState" to (prefs.getString("company_state", "") ?: "")
-                        )
+                        ).toMutableMap().apply {
+                            deliveryDriverNames.forEach { (driver, name) -> put("deliveryDriverName$driver", name) }
+                        }
                         companyConfigRef(firestore, companyId).set(initialConfig, SetOptions.merge())
                     }
                 }
@@ -2276,10 +2300,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         val orderRef = firestore.collection("orders").document(order.id.toString())
         val configRef = companyConfigRef(firestore, companyId)
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+        val driverStatRef = if (order.assignedDriver in 1..6) firestore.collection("deliveryStats").document("${companyId}_${today}_${order.assignedDriver}") else null
         val month = java.text.SimpleDateFormat("yyyy-MM", Locale.US).format(java.util.Date())
         firestore.runTransaction { transaction ->
             val remoteOrder = transaction.get(orderRef)
             val config = transaction.get(configRef)
+            val driverStat = driverStatRef?.let { transaction.get(it) }
             if (!remoteOrder.exists()) return@runTransaction false
             val oldDay = config.getString("salesDailyDate").orEmpty()
             val oldMonth = config.getString("salesMonthlyKey").orEmpty()
@@ -2295,6 +2321,15 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 "salesMonthlyWater" to monthWater + order.waterQty,
                 "salesMonthlyGas" to monthGas + order.gasQty
             ), SetOptions.merge())
+            if (driverStatRef != null && driverStat != null) {
+                transaction.set(driverStatRef, mapOf(
+                    "companyId" to companyId,
+                    "date" to today,
+                    "driver" to order.assignedDriver,
+                    "deliveries" to ((driverStat.getLong("deliveries") ?: 0L).toInt() + 1),
+                    "waterQty" to ((driverStat.getLong("waterQty") ?: 0L).toInt() + order.waterQty)
+                ), SetOptions.merge())
+            }
             transaction.delete(orderRef)
             true
         }.addOnSuccessListener { counted ->
@@ -2305,6 +2340,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 salesDailyGas = if (savedDay == today) salesDailyGas + order.gasQty else order.gasQty
                 salesMonthlyWater = if (savedMonth == month) salesMonthlyWater + order.waterQty else order.waterQty
                 salesMonthlyGas = if (savedMonth == month) salesMonthlyGas + order.gasQty else order.gasQty
+                if (order.assignedDriver in 1..6) {
+                    val old = driverDailyStats[order.assignedDriver] ?: Pair(0, 0)
+                    driverDailyStats = driverDailyStats + (order.assignedDriver to Pair(old.first + 1, old.second + order.waterQty))
+                }
                 prefs.edit().putString("salesDailyDate", today).putString("salesMonthlyKey", month).apply()
                 firestore.collection("orders").document(order.id.toString()).collection("messages").get().addOnSuccessListener { snap ->
                     val batch = firestore.batch(); snap.documents.forEach { batch.delete(it.reference) }; batch.commit()
