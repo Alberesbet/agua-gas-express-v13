@@ -28,7 +28,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew --version || true
-          find "$HOME/.gradle/wrapper/dists" -type f -path '*/gradle-8.13/bin/gradle' -exec chmod +x {} \\; || true
+          find "$HOME/.gradle/wrapper/dists" -type f -path '*/gradle-8.13/bin/gradle' -exec chmod +x {} \; || true
 
       - name: Build developer, client and delivery APKs
         run: ./gradlew --no-daemon assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
