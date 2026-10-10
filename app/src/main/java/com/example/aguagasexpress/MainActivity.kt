@@ -3489,6 +3489,43 @@ private fun ApkTransferPanel() {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
 
+    fun downloadLatestApk(role: String) {
+        if (busy) return
+        busy = true
+        status = "Baixando o APK mais recente do $role..."
+        scope.launch {
+            try {
+                val fileName = if (role == "Cliente") "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+                val saved = withContext(Dispatchers.IO) {
+                    val dir = java.io.File(context.filesDir, "developer-apks").apply { mkdirs() }
+                    val target = java.io.File(dir, fileName)
+                    val temp = java.io.File(dir, "$fileName.part")
+                    val url = URL("https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName")
+                    val connection = (url.openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 20000
+                        readTimeout = 60000
+                        instanceFollowRedirects = true
+                        requestMethod = "GET"
+                    }
+                    try {
+                        val code = connection.responseCode
+                        if (code !in 200..299) throw IllegalStateException("Download indisponível (HTTP $code). Aguarde a compilação terminar e tente novamente.")
+                        connection.inputStream.use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
+                    } finally { connection.disconnect() }
+                    if (temp.length() < 100_000L) { temp.delete(); throw IllegalStateException("O download veio incompleto. Tente novamente.") }
+                    val valid = try { java.util.zip.ZipFile(temp).use { it.getEntry("AndroidManifest.xml") != null } } catch (_: Exception) { false }
+                    if (!valid) { temp.delete(); throw IllegalStateException("O arquivo baixado não passou na verificação de APK.") }
+                    if (target.exists()) target.delete()
+                    if (!temp.renameTo(target)) { temp.copyTo(target, overwrite = true); temp.delete() }
+                    target
+                }
+                status = "APK do $role baixado e verificado (" + (saved.length() / 1024 / 1024) + " MB). Agora toque em ENVIAR APK DO $role."
+            } catch (e: Exception) {
+                status = "Não consegui baixar o APK do $role: " + (e.localizedMessage ?: "verifique a internet e tente novamente")
+            } finally { busy = false }
+        }
+    }
+
     fun importApk(role: String, uri: Uri?) {
         if (uri == null || busy) return
         busy = true
@@ -3572,6 +3609,16 @@ private fun ApkTransferPanel() {
         ) {
             Text("📦 APKs PARA ENVIAR À EMPRESA", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
             Text("Baixe ou gere os APKs no Android. Escolha cada arquivo aqui uma vez; eles ficam guardados no aplicativo do desenvolvedor para você enviar quando quiser.", color = Color.White, fontSize = 13.sp)
+            Button(
+                onClick = { downloadLatestApk("Cliente") },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("⬇️ BAIXAR APK MAIS RECENTE DO CLIENTE") }
+            Button(
+                onClick = { downloadLatestApk("Entregador") },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("⬇️ BAIXAR APK MAIS RECENTE DO ENTREGADOR") }
             OutlinedButton(
                 onClick = { chooseClient.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
                 enabled = !busy,
