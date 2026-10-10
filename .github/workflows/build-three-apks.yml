@@ -72,7 +72,7 @@ jobs:
           retention-days: 90
 
       - name: Publish downloadable APKs for the company app
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/fix/preserve-working-firebase-invite'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-build
