@@ -444,6 +444,43 @@ private fun showCustomerVoiceNotification(context: Context, title: String, text:
 }
 
 
+
+private fun pixField(id: String, value: String): String =
+    id + value.length.toString().padStart(2, '0') + value
+
+private fun buildPixPayload(pixKey: String, recipientName: String, city: String, amount: Double): String {
+    fun clean(value: String, maxLength: Int): String =
+        java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+            .uppercase(Locale.ROOT)
+            .filter { it.code in 32..126 }
+            .take(maxLength)
+            .ifBlank { "AGUA GAS EXPRESS" }
+
+    val merchant = pixField("00", "BR.GOV.BCB.PIX") + pixField("01", pixKey.trim())
+    val amountText = String.format(Locale.US, "%.2f", amount.coerceAtLeast(0.0))
+    val txid = pixField("05", "***")
+    val body = pixField("00", "01") +
+        pixField("01", "12") +
+        pixField("26", merchant) +
+        pixField("52", "0000") +
+        pixField("53", "986") +
+        pixField("54", amountText) +
+        pixField("58", "BR") +
+        pixField("59", clean(recipientName, 25)) +
+        pixField("60", clean(city, 15)) +
+        pixField("62", txid) + "6304"
+    var crc = 0xFFFF
+    for (byte in body.toByteArray(Charsets.US_ASCII)) {
+        crc = crc xor ((byte.toInt() and 0xFF) shl 8)
+        repeat(8) {
+            crc = if ((crc and 0x8000) != 0) ((crc shl 1) xor 0x1021) and 0xFFFF
+                  else (crc shl 1) and 0xFFFF
+        }
+    }
+    return body + crc.toString(16).uppercase(Locale.ROOT).padStart(4, '0')
+}
+
 private fun createOrderReceiptPdf(context: Context, order: Order, companyName: String): Uri? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
     return try {
@@ -2486,10 +2523,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     fontSize = 17.sp
                                 )
                                 if (pixKey.isNotBlank()) {
-                                    MainButton("COPIAR CHAVE PIX") {
+                                    MainButton("COPIAR PIX COM VALOR DO PEDIDO") {
+                                        val pixCity = prefs.getString("company_city", "") ?: ""
+                                        val payload = buildPixPayload(pixKey, pixRecipientName, pixCity, clientTotal)
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Pix Copia e Cola", payload))
+                                        pixCopied = true
+                                        message = "Pix Copia e Cola com valor de ${money(clientTotal)} copiado. Confira o recebedor antes de pagar."
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    MainButton("COPIAR SOMENTE CHAVE PIX") {
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Chave Pix", pixKey))
-                                        pixCopied = true
                                         message = "Chave Pix copiada."
                                     }
                                 }
