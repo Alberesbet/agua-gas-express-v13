@@ -2402,8 +2402,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         RadioButton(selected = payment == "PIX", onClick = { payment = "PIX"; message = "" })
                         Text("Pix", color = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        RadioButton(selected = payment == "Fiado", onClick = { payment = "Fiado"; message = "No momento não estamos com essa opção. Aguarde mais alguns instantes." })
-                        Text("Fiado", color = Color.White)
+                        RadioButton(selected = payment == "Cartão", onClick = { payment = "Cartão"; message = "" })
+                        Text("Cartão", color = Color.White)
                     }
                     if (payment == "Dinheiro") {
                         InputField("Quanto você vai entregar? (ex.: 50)", cashGiven, true) { cashGiven = it; message = "" }
@@ -2414,14 +2414,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             Text("Faltam: ${money(clientTotal - cashValue)}", color = Color(0xFFFFD0A8), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         } else {
                             Text("Informe o valor que vai entregar para calcular o troco.", color = Color.White, fontSize = 12.sp)
-                        }
-                    }
-                    if (payment == "Fiado") {
-                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
-                            Text(
-                                "No momento não estamos com essa opção. Aguarde mais alguns instantes.",
-                                modifier = Modifier.padding(14.dp), color = Ink, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                     if (payment == "PIX") {
@@ -2456,7 +2448,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             clientWaterQty + clientGasQty == 0 -> message = "Escolha ao menos um produto."
                             products.any { (clientQuantities[it.name] ?: 0) > 0 && it.price <= 0.0 } -> message = "Os preços ainda não foram configurados pela administração."
                             payment == "PIX" && pixKey.isBlank() -> message = "A administração precisa cadastrar a chave Pix."
-                            payment == "Fiado" -> message = "No momento não estamos com essa opção. Aguarde mais alguns instantes."
+                            payment == "Cartão" -> message = "Pagamento com cartão selecionado. A cobrança deve ser concluída na maquininha ou no serviço de pagamento da empresa."
                             payment == "Dinheiro" && (cashGiven.replace(",", ".").toDoubleOrNull() ?: 0.0) < clientTotal -> message = "Informe um valor igual ou maior que o total para calcular o troco."
                             else -> {
                                 val items = products.mapNotNull { product ->
