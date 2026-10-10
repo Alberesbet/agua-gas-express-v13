@@ -45,7 +45,7 @@ jobs:
       - name: Construir os três APKs
         run: |
           set -euo pipefail
-          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache --parallel :app:assembleDesenvolvedorDebug :app:assembleClienteDebug :app:assembleEntregadorDebug
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
 
       - name: Publicar os APKs para download no site
         shell: bash
