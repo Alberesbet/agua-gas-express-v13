@@ -53,6 +53,20 @@ android {
     }
 }
 
+/**
+ * Gera os três APKs de depuração numa única tarefa, sem depender da variante
+ * selecionada no painel Build Variants do Android Studio.
+ */
+tasks.register("assembleAllProfilesDebug") {
+    group = "build"
+    description = "Compila os APKs Desenvolvedor, Cliente e Entregador."
+    dependsOn(
+        "assembleDesenvolvedorDebug",
+        "assembleClienteDebug",
+        "assembleEntregadorDebug"
+    )
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.10.01")
     implementation(composeBom)
