@@ -128,16 +128,18 @@ if(perfil === 'empresa'){
 
 } else if(perfil === 'cliente'){
   title.textContent = 'Acesso do Cliente';
-  msg.textContent = 'Baixe o aplicativo exclusivo do Cliente.';
-  addButton('📱 BAIXAR APLICATIVO DO CLIENTE', apk);
-  addOpenAppButton('✅ ABRIR NO APLICATIVO');
+  msg.textContent = '1º passo: baixe e instale o APK do Cliente. Depois, volte a este mesmo convite e toque em ABRIR NO APLICATIVO para concluir o acesso à empresa.';
+  addButton('⬇️ 1º PASSO — BAIXAR APK DO CLIENTE', apk);
+  addButton('Se o download não começar, abrir a página de downloads', 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build', true);
+  addOpenAppButton('✅ 2º PASSO — ABRIR NO APLICATIVO');
   info.textContent = 'Empresa do convite: ' + (empresa || 'não informada');
 
 } else if(perfil === 'entregador'){
   title.textContent = 'Acesso do Entregador';
-  msg.textContent = 'Baixe o aplicativo exclusivo do Entregador.';
-  addButton('📱 BAIXAR APLICATIVO DO ENTREGADOR', apk);
-  addOpenAppButton('✅ ABRIR NO APLICATIVO');
+  msg.textContent = '1º passo: baixe e instale o APK do Entregador. Depois, volte a este mesmo convite e toque em ABRIR NO APLICATIVO para concluir o acesso à empresa.';
+  addButton('⬇️ 1º PASSO — BAIXAR APK DO ENTREGADOR', apk);
+  addButton('Se o download não começar, abrir a página de downloads', 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build', true);
+  addOpenAppButton('✅ 2º PASSO — ABRIR NO APLICATIVO');
   info.textContent = 'Empresa do convite: ' + (empresa || 'não informada');
 
 } else if(perfil === 'proprietario'){
