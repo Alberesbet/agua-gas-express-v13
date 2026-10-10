@@ -46,7 +46,7 @@ jobs:
 
       - name: Build all three APKs in one Gradle invocation
         run: |
-          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
 
       - name: Verify and rename all three APKs
         shell: bash
