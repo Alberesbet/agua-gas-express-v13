@@ -2519,7 +2519,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 Text("ENTREGADOR", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     (1..6).forEach { driver ->
-                        Button(onClick = { selectedDeliveryDriver = driver }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (selectedDeliveryDriver == driver) Green else Color(0xFF315A85)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 7.dp)) { Text("$driver", fontWeight = FontWeight.ExtraBold) }
+                        Button(onClick = { selectedDeliveryDriver = driver }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (selectedDeliveryDriver == driver) Green else Color(0xFF315A85)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 7.dp)) { Text(deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }.take(9), fontWeight = FontWeight.ExtraBold, fontSize = 9.sp) }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -3065,6 +3065,33 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     )
                 }
                 Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("NOMES DOS 6 ENTREGADORES", color = LightBlue, fontWeight = FontWeight.ExtraBold)
+                        Text("Cadastre o nome de cada pessoa. O nome aparecerá na seleção do entregador e no relatório diário.", color = Color.White, fontSize = 12.sp)
+                        (1..6).forEach { driver ->
+                            OutlinedTextField(
+                                value = deliveryDriverNames[driver].orEmpty(),
+                                onValueChange = { value -> deliveryDriverNames = deliveryDriverNames + (driver to value) },
+                                label = { Text("Entregador $driver", color = Color.White) },
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        Button(onClick = {
+                            val updates = deliveryDriverNames.mapKeys { (driver, _) -> "deliveryDriverName$driver" }
+                            companyConfigRef(firestore, companyId).set(updates, SetOptions.merge())
+                                .addOnSuccessListener {
+                                    prefs.edit().apply { deliveryDriverNames.forEach { (driver, name) -> putString("delivery_driver_name_$driver", name.trim()) } }.apply()
+                                    deliveryDriverNames = deliveryDriverNames.mapValues { it.value.trim().ifBlank { "Entregador ${it.key}" } }
+                                    message = "Nomes dos entregadores salvos."
+                                }
+                                .addOnFailureListener { e -> message = "Não foi possível salvar os nomes: ${e.localizedMessage ?: "erro no Firebase"}" }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("SALVAR NOMES DOS ENTREGADORES") }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 Text("MENU DA EMPRESA", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3491,6 +3518,19 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             textAlign = TextAlign.Center
                         )
                     }
+                }
+                if (deliveryMode && prefs.getString("company_role", "admin") != "delivery") {
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("RESUMO DE HOJE POR ENTREGADOR", color = LightBlue, fontWeight = FontWeight.ExtraBold)
+                            Text("Os totais aumentam quando uma entrega é concluída.", color = Color.White, fontSize = 11.sp)
+                            (1..6).forEach { driver ->
+                                val stats = driverDailyStats[driver] ?: Pair(0, 0)
+                                Text("${deliveryDriverNames[driver].orEmpty().ifBlank { "Entregador $driver" }} — ${stats.first} viagens — ${stats.second} águas entregues", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
                 if (deliveryMode) {
                     val onRouteCount = orders.count { it.status == "Em entrega" }
