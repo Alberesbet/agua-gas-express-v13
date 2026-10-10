@@ -60,14 +60,16 @@ jobs:
           test -s dist/AguaGasExpress-Desenvolvedor.apk
           test -s dist/AguaGasExpress-Cliente.apk
           test -s dist/AguaGasExpress-Entregador.apk
+          # Inclui também um ZIP com todo o código versionado desta mesma compilação.
+          git archive --format=zip --output dist/AguaGasExpress-Codigo-Fonte.zip HEAD
           sha256sum dist/*.apk
           ls -lh dist/
 
-      - name: Upload all three APKs as build artifacts
+      - name: Upload APKs and source code as build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AguaGasExpress-tres-APKs
-          path: dist/*.apk
+          name: AguaGasExpress-APKs-e-Codigo
+          path: dist/*
           if-no-files-found: error
           retention-days: 90
 
