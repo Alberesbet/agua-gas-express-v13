@@ -66,17 +66,17 @@ const actions = document.getElementById('actions');
 const info = document.getElementById('info');
 
 const base = 'https://agua-e-gas-express.web.app/';
-const downloads = 'https://alberesbet.github.io/agua-gas-express-v13/downloads/';
+const downloads = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/';
 
 const apk = {
-  empresa: downloads + 'AguaGasExpress-desenvolvedor.apk',
-  cliente: downloads + 'AguaGasExpress-cliente.apk',
-  entregador: downloads + 'AguaGasExpress-entregador.apk',
-  proprietario: downloads + 'AguaGasExpress-desenvolvedor.apk'
+  empresa: downloads + 'AguaGasExpress-Desenvolvedor.apk',
+  cliente: downloads + 'AguaGasExpress-Cliente.apk',
+  entregador: downloads + 'AguaGasExpress-Entregador.apk',
+  proprietario: downloads + 'AguaGasExpress-Desenvolvedor.apk'
 }[perfil] || '';
 
 function inviteUrl(){
-  return base + 'invite/?perfil=' +
+  return base + 'invite?perfil=' +
     encodeURIComponent(perfil) +
     '&empresa=' + encodeURIComponent(empresa);
 }
