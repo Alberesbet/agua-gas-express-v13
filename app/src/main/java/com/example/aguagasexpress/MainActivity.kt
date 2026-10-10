@@ -1128,7 +1128,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterStatus by remember { mutableStateOf("") }
     var masterCompanyPhone by remember { mutableStateOf("") }
     var masterCompanyDetailsOpen by remember { mutableStateOf(false) }
-    var showDeactivateLicenseConfirm by remember { mutableStateOf(false) }
+
     var masterCompanyId by remember { mutableStateOf("") }
     var masterCompanyDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
     var masterLicensePermanent by remember { mutableStateOf(false) }
@@ -1425,7 +1425,22 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 if (masterCompanyActive) {
                     Button(
                         enabled = !loading,
-                        onClick = { showDeactivateLicenseConfirm = true },
+                        onClick = {
+                            loading = true
+                            firestore.collection("companies").document(masterCompanyId).update(
+                                mapOf("active" to false, "activated" to false, "licenseStatus" to "INACTIVE")
+                            ).addOnSuccessListener {
+                                masterCompanyActive = false
+                                masterCompanyActivated = false
+                                masterLicenseStatus = "INACTIVE"
+                                masterCompanyMessage = "Licença desativada para esta empresa."
+                                loading = false
+                                loadLatestMasterCompany()
+                            }.addOnFailureListener { e ->
+                                loading = false
+                                masterCompanyMessage = "Não foi possível desativar a licença: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB91C1C))
                     ) { Text("DESATIVAR LICENÇA DA EMPRESA") }
