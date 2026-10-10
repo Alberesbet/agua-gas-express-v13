@@ -24,6 +24,7 @@ import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -1458,38 +1459,65 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
-    var apkRoleToShare by remember { mutableStateOf("Cliente") }
-    val apkPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { apkUri ->
-        if (apkUri != null) {
+    var apkDownloadInProgress by remember { mutableStateOf(false) }
+    fun downloadAndShareApk(role: String) {
+        if (apkDownloadInProgress) return
+        apkDownloadInProgress = true
+        message = "Baixando APK do $role..."
+        coroutineScope.launch {
             try {
-                val selectedName = context.contentResolver.query(
-                    apkUri,
-                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
-                    null,
-                    null,
-                    null
-                )?.use { cursor ->
-                    if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
-                }.orEmpty()
-                val expectedToken = if (apkRoleToShare.equals("Cliente", ignoreCase = true)) "cliente" else "entregador"
-                if (!selectedName.endsWith(".apk", ignoreCase = true) ||
-                    !selectedName.contains(expectedToken, ignoreCase = true)
-                ) {
-                    message = "Arquivo incorreto. Selecione o APK do $apkRoleToShare (arquivo .apk com '$expectedToken' no nome)."
-                } else {
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/vnd.android.package-archive"
-                        putExtra(Intent.EXTRA_STREAM, apkUri)
-                        clipData = android.content.ClipData.newUri(context.contentResolver, "APK $apkRoleToShare", apkUri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val apkFile = withContext(Dispatchers.IO) {
+                    val isClient = role.equals("Cliente", ignoreCase = true)
+                    val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+                    val downloadUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
+                    val targetDir = java.io.File(context.cacheDir, "downloaded-apks").apply { mkdirs() }
+                    val targetFile = java.io.File(targetDir, fileName)
+                    val tempFile = java.io.File(targetDir, "$fileName.part")
+                    val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+                        instanceFollowRedirects = true
+                        connectTimeout = 20000
+                        readTimeout = 60000
+                        requestMethod = "GET"
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $apkRoleToShare"))
-                    showShareLinksDialog = false
+                    try {
+                        val status = connection.responseCode
+                        if (status !in 200..299) {
+                            throw IllegalStateException("O servidor ainda não publicou este APK (HTTP $status). Tente novamente após a geração da versão.")
+                        }
+                        connection.inputStream.use { input ->
+                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        if (tempFile.length() < 100_000L) {
+                            throw IllegalStateException("O arquivo recebido parece incompleto. Tente novamente.")
+                        }
+                        if (targetFile.exists()) targetFile.delete()
+                        if (!tempFile.renameTo(targetFile)) {
+                            tempFile.copyTo(targetFile, overwrite = true)
+                            tempFile.delete()
+                        }
+                    } finally {
+                        connection.disconnect()
+                    }
+                    targetFile
                 }
+                val apkUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    apkFile
+                )
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/vnd.android.package-archive"
+                    putExtra(Intent.EXTRA_STREAM, apkUri)
+                    clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", apkUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $role"))
+                showShareLinksDialog = false
+                message = ""
             } catch (e: Exception) {
-                message = "Não foi possível compartilhar o APK selecionado: ${e.localizedMessage ?: "tente novamente"}"
+                message = "Não foi possível baixar/compartilhar o APK do $role: ${e.localizedMessage ?: "verifique a internet e tente novamente"}"
+            } finally {
+                apkDownloadInProgress = false
             }
         }
     }
@@ -2517,21 +2545,22 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         title = { Text("📦 Enviar aplicativo APK") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Escolha o APK já baixado neste aparelho. Para compartilhar os arquivos mais recentes, baixe primeiro os APKs da página da empresa no notebook ou no celular.", color = Color.DarkGray)
-                                Text("Cliente: selecione AguaGasExpress-cliente.apk.", color = Color.DarkGray, fontSize = 12.sp)
-                                Text("Entregador: selecione AguaGasExpress-entregador.apk.", color = Color.DarkGray, fontSize = 12.sp)
+                                Text(
+                                    if (apkDownloadInProgress) "Baixando o APK escolhido. Aguarde..."
+                                    else "Escolha o aplicativo. O APK será baixado automaticamente e o menu de compartilhamento será aberto, sem precisar procurar arquivos no celular.",
+                                    color = Color.DarkGray
+                                )
+                                Text("Os downloads recebem a versão mais recente publicada pelo projeto.", color = Color.DarkGray, fontSize = 12.sp)
                             }
                         },
                         confirmButton = {
                             Column(horizontalAlignment = Alignment.End) {
                                 TextButton(onClick = {
-                                    apkRoleToShare = "Cliente"
-                                    apkPickerLauncher.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*"))
-                                }) { Text("👤 ENVIAR APK DO CLIENTE") }
+                                    downloadAndShareApk("Cliente")
+                                }, enabled = !apkDownloadInProgress) { Text(if (apkDownloadInProgress) "BAIXANDO..." else "👤 ENVIAR APK DO CLIENTE") }
                                 TextButton(onClick = {
-                                    apkRoleToShare = "Entregador"
-                                    apkPickerLauncher.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*"))
-                                }) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
+                                    downloadAndShareApk("Entregador")
+                                }, enabled = !apkDownloadInProgress) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
                             }
                         },
                         dismissButton = {
