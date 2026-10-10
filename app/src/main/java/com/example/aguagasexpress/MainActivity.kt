@@ -430,7 +430,7 @@ private fun announceCustomerArrival(context: Context) {
                 val languageStatus = speech.setLanguage(java.util.Locale("pt", "BR"))
                 if (languageStatus != android.speech.tts.TextToSpeech.LANG_MISSING_DATA &&
                     languageStatus != android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
-                    speech.speak("Seu pedido chegou! O entregador está no endereço.", android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "aguagas_cliente_chegada")
+                    speech.speak("Seu pedido chegou, o entregador está no endereço.", android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "aguagas_cliente_chegada")
                 } else playOrderAlertSound(context)
             } else playOrderAlertSound(context)
         }
@@ -440,7 +440,7 @@ private fun announceCustomerArrival(context: Context) {
 private fun announcePaymentConfirmed(context: Context) {
     announceCustomerVoice(
         context,
-        "Pagamento confirmado. Seu pedido foi liberado para entrega. A nota do pedido já está disponível.",
+        "Seu pedido foi confirmado.",
         "aguagas_pagamento_confirmado"
     )
 }
@@ -448,7 +448,7 @@ private fun announcePaymentConfirmed(context: Context) {
 private fun announceOrderSentToDelivery(context: Context) {
     announceCustomerVoice(
         context,
-        "Seu pedido foi enviado para entrega. Em breve o entregador iniciará a entrega.",
+        "Seu pedido foi confirmado.",
         "aguagas_pedido_enviado_entrega"
     )
 }
@@ -460,7 +460,7 @@ private fun announceCustomerApproved(context: Context) {
 private fun announceDeliveryStarted(context: Context) {
     announceCustomerVoice(
         context,
-        "O entregador iniciou a entrega. Seu pedido está a caminho.",
+        "Seu pedido saiu para entrega.",
         "aguagas_entrega_iniciada"
     )
 }
@@ -651,6 +651,14 @@ private fun createOrderReceiptPdf(context: Context, order: Order, companyName: S
         }
         wrapped("Itens: ${order.items}")
         wrapped("Forma de pagamento: ${order.payment}")
+        if (order.payment.equals("PIX", ignoreCase = true)) {
+            val pixName = cp.getString("pix_recipient_name", "") ?: ""
+            val pixType = cp.getString("pix_key_type", "") ?: ""
+            val pixKey = cp.getString("pix_key", "") ?: ""
+            wrapped("Pix — valor solicitado: ${money(order.total)}", 11f, true)
+            if (pixName.isNotBlank()) wrapped("Recebedor Pix: $pixName")
+            if (pixKey.isNotBlank()) wrapped("Chave Pix ($pixType): $pixKey") else wrapped("Chave Pix: não cadastrada")
+        }
         if (order.payment == "Dinheiro" && order.cashGiven > 0) wrapped("Valor recebido: ${money(order.cashGiven)}")
         line("VALOR TOTAL: ${money(order.total)}", 16f, true)
         line(if (order.paid) "Status: PAGAMENTO CONFIRMADO" else "Status: AGUARDANDO PAGAMENTO", 11f, true)
