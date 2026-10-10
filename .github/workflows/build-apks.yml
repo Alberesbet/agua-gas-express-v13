@@ -26,7 +26,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew --version || true
-          find "$HOME/.gradle/wrapper/dists" -type f -path '*/gradle-8.13/bin/gradle' -exec chmod +x {} \; || true
+          chmod +x "$HOME"/.gradle/wrapper/dists/gradle-8.13-bin/*/gradle-8.13/bin/gradle || true
           ./gradlew --no-daemon assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
       - name: Upload three APKs
         if: success()
