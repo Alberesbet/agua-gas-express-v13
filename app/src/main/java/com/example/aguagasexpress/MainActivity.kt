@@ -2405,21 +2405,20 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     products.forEach { product ->
                         val quantity = clientQuantities[product.name] ?: 0
                         Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF10284A)),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 if (product.isGas) Text("🔥", fontSize = 24.sp)
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                                    Text(product.name, color = Ink, fontWeight = FontWeight.Bold,
+                                    Text(product.name, color = Color.White, fontWeight = FontWeight.Bold,
                                         fontSize = if (product.name == COMBO_WATER_NAME) 12.sp else 14.sp, maxLines = 2)
-                                    Text(money(product.price), color = Blue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(money(product.price), color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                                 OutlinedButton(
                                     onClick = { if (quantity > 0) clientQuantities = clientQuantities + (product.name to quantity - 1) },
