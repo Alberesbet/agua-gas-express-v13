@@ -18,6 +18,9 @@ android {
     productFlavors {
         create("desenvolvedor") {
             dimension = "perfil"
+            // Keep developer/admin data isolated from the company/client app.
+            applicationIdSuffix = ".desenvolvedor"
+            versionNameSuffix = "-desenvolvedor"
             buildConfigField("String", "DEFAULT_PROFILE", "\"proprietario\"")
         }
         create("cliente") {
