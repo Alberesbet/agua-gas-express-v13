@@ -1,9 +1,10 @@
-name: Publicar site GitHub Pages
+name: Construir APKs e publicar site
 
 on:
   push:
     branches:
       - master
+      - fix/apks-cliente-entregador-notebook
   workflow_dispatch:
 
 permissions:
@@ -16,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publicar:
+  construir-e-publicar:
     runs-on: ubuntu-latest
 
     environment:
@@ -26,6 +27,29 @@ jobs:
     steps:
       - name: Baixar arquivos do repositorio
         uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Construir os três APKs
+        working-directory: .
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleDesenvolvedorDebug :app:assembleClienteDebug :app:assembleEntregadorDebug
+
+      - name: Publicar os APKs para download no site
+        run: |
+          mkdir -p public/downloads
+          cp app/build/outputs/apk/desenvolvedor/debug/*.apk public/downloads/AguaGasExpress-desenvolvedor.apk
+          cp app/build/outputs/apk/cliente/debug/*.apk public/downloads/AguaGasExpress-cliente.apk
+          cp app/build/outputs/apk/entregador/debug/*.apk public/downloads/AguaGasExpress-entregador.apk
+          ls -lh public/downloads/AguaGasExpress-*.apk
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
