@@ -1551,6 +1551,17 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         tempFile.delete()
                         throw IllegalStateException("O arquivo parece incompleto ou não é um APK válido.")
                     }
+                    val hasAndroidManifest = try {
+                        java.util.zip.ZipFile(tempFile).use { apkZip ->
+                            apkZip.getEntry("AndroidManifest.xml") != null
+                        }
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (!hasAndroidManifest) {
+                        tempFile.delete()
+                        throw IllegalStateException("O arquivo escolhido não parece ser um APK Android válido. Escolha o arquivo .apk correto.")
+                    }
                     if (targetFile.exists()) targetFile.delete()
                     if (!tempFile.renameTo(targetFile)) {
                         tempFile.copyTo(targetFile, overwrite = true)
@@ -3382,6 +3393,17 @@ private fun ApkTransferPanel() {
                     if (temp.length() < 100_000L) {
                         temp.delete()
                         throw IllegalStateException("O arquivo parece incompleto. Escolha o APK correto.")
+                    }
+                    val hasAndroidManifest = try {
+                        java.util.zip.ZipFile(temp).use { apkZip ->
+                            apkZip.getEntry("AndroidManifest.xml") != null
+                        }
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (!hasAndroidManifest) {
+                        temp.delete()
+                        throw IllegalStateException("O arquivo escolhido não parece ser um APK Android válido. Escolha o arquivo .apk correto.")
                     }
                     if (target.exists()) target.delete()
                     if (!temp.renameTo(target)) {
