@@ -1473,66 +1473,75 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
-    var apkDownloadInProgress by remember { mutableStateOf(false) }
-    fun downloadAndShareApk(role: String) {
-        if (apkDownloadInProgress) return
-        apkDownloadInProgress = true
-        message = "Baixando APK do $role..."
+    var apkOperationInProgress by remember { mutableStateOf(false) }
+
+    fun importApk(role: String, uri: Uri?) {
+        if (uri == null || apkOperationInProgress) return
+        apkOperationInProgress = true
+        message = "Guardando o APK do $role no aplicativo..."
         coroutineScope.launch {
             try {
-                val apkFile = withContext(Dispatchers.IO) {
+                val savedFile = withContext(Dispatchers.IO) {
                     val isClient = role.equals("Cliente", ignoreCase = true)
                     val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
-                    val downloadUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
-                    val targetDir = java.io.File(context.cacheDir, "downloaded-apks").apply { mkdirs() }
+                    val targetDir = java.io.File(context.filesDir, "downloaded-apks").apply { mkdirs() }
                     val targetFile = java.io.File(targetDir, fileName)
                     val tempFile = java.io.File(targetDir, "$fileName.part")
-                    val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
-                        instanceFollowRedirects = true
-                        connectTimeout = 20000
-                        readTimeout = 60000
-                        requestMethod = "GET"
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        tempFile.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("Não foi possível ler o arquivo escolhido.")
+                    if (tempFile.length() < 100_000L) {
+                        tempFile.delete()
+                        throw IllegalStateException("O arquivo parece incompleto ou não é um APK válido.")
                     }
-                    try {
-                        val status = connection.responseCode
-                        if (status !in 200..299) {
-                            throw IllegalStateException("O servidor ainda não publicou este APK (HTTP $status). Tente novamente após a geração da versão.")
-                        }
-                        connection.inputStream.use { input ->
-                            tempFile.outputStream().use { output -> input.copyTo(output) }
-                        }
-                        if (tempFile.length() < 100_000L) {
-                            throw IllegalStateException("O arquivo recebido parece incompleto. Tente novamente.")
-                        }
-                        if (targetFile.exists()) targetFile.delete()
-                        if (!tempFile.renameTo(targetFile)) {
-                            tempFile.copyTo(targetFile, overwrite = true)
-                            tempFile.delete()
-                        }
-                    } finally {
-                        connection.disconnect()
+                    if (targetFile.exists()) targetFile.delete()
+                    if (!tempFile.renameTo(targetFile)) {
+                        tempFile.copyTo(targetFile, overwrite = true)
+                        tempFile.delete()
                     }
                     targetFile
                 }
-                val apkUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    apkFile
-                )
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/vnd.android.package-archive"
-                    putExtra(Intent.EXTRA_STREAM, apkUri)
-                    clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", apkUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $role"))
-                showShareLinksDialog = false
-                message = ""
+                message = "APK do $role guardado no aplicativo: " + savedFile.name + ". Agora você pode enviá-lo quando quiser."
             } catch (e: Exception) {
-                message = "Não foi possível baixar/compartilhar o APK do $role: ${e.localizedMessage ?: "verifique a internet e tente novamente"}"
+                message = "Não foi possível guardar o APK do $role: " + (e.localizedMessage ?: "verifique se escolheu o arquivo correto")
             } finally {
-                apkDownloadInProgress = false
+                apkOperationInProgress = false
             }
+        }
+    }
+
+    val chooseClientApk = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> importApk("Cliente", uri) }
+    val chooseDelivererApk = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> importApk("Entregador", uri) }
+
+    fun shareStoredApk(role: String) {
+        try {
+            val isClient = role.equals("Cliente", ignoreCase = true)
+            val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+            val apkFile = java.io.File(java.io.File(context.filesDir, "downloaded-apks"), fileName)
+            if (!apkFile.isFile || apkFile.length() < 100_000L) {
+                message = "O APK do $role ainda não foi importado. Primeiro toque em ESCOLHER APK DO $role."
+                return
+            }
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                context.packageName + ".fileprovider",
+                apkFile
+            )
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_STREAM, apkUri)
+                clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", apkUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $role"))
+            showShareLinksDialog = false
+            message = ""
+        } catch (e: Exception) {
+            message = "Não foi possível compartilhar o APK do $role: " + (e.localizedMessage ?: "tente novamente")
         }
     }
     var clientName by remember { mutableStateOf(prefs.getString("client_name", "") ?: "") }
@@ -2556,25 +2565,39 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 if (showShareLinksDialog) {
                     AlertDialog(
                         onDismissRequest = { showShareLinksDialog = false },
-                        title = { Text("📦 Enviar aplicativo APK") },
+                        title = { Text("📦 Preparar e enviar APKs") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    if (apkDownloadInProgress) "Baixando o APK escolhido. Aguarde..."
-                                    else "Escolha o aplicativo. O APK será baixado automaticamente e o menu de compartilhamento será aberto, sem precisar procurar arquivos no celular.",
+                                    "1. Baixe ou gere os APKs no Android. 2. Escolha cada arquivo nesta tela para guardá-lo dentro do aplicativo. 3. Envie cada APK quando precisar.",
                                     color = Color.DarkGray
                                 )
-                                Text("Os downloads recebem a versão mais recente publicada pelo projeto.", color = Color.DarkGray, fontSize = 12.sp)
+                                Text(
+                                    "Os arquivos importados ficam guardados nos dados do aplicativo e não precisam ser escolhidos novamente a cada envio. Se limpar os dados ou desinstalar o app, será necessário importá-los de novo.",
+                                    color = Color.DarkGray,
+                                    fontSize = 12.sp
+                                )
                             }
                         },
                         confirmButton = {
                             Column(horizontalAlignment = Alignment.End) {
-                                TextButton(onClick = {
-                                    downloadAndShareApk("Cliente")
-                                }, enabled = !apkDownloadInProgress) { Text(if (apkDownloadInProgress) "BAIXANDO..." else "👤 ENVIAR APK DO CLIENTE") }
-                                TextButton(onClick = {
-                                    downloadAndShareApk("Entregador")
-                                }, enabled = !apkDownloadInProgress) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
+                                TextButton(
+                                    onClick = { chooseClientApk.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
+                                    enabled = !apkOperationInProgress
+                                ) { Text("📥 ESCOLHER APK DO CLIENTE") }
+                                TextButton(
+                                    onClick = { chooseDelivererApk.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
+                                    enabled = !apkOperationInProgress
+                                ) { Text("📥 ESCOLHER APK DO ENTREGADOR") }
+                                Divider()
+                                TextButton(
+                                    onClick = { shareStoredApk("Cliente") },
+                                    enabled = !apkOperationInProgress
+                                ) { Text("👤 ENVIAR APK DO CLIENTE") }
+                                TextButton(
+                                    onClick = { shareStoredApk("Entregador") },
+                                    enabled = !apkOperationInProgress
+                                ) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
                             }
                         },
                         dismissButton = {
@@ -2582,7 +2605,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         }
                     )
                 }
-                ErrorText(message)
                 if (showResetSalesConfirm) {
                     AlertDialog(
                         onDismissRequest = { showResetSalesConfirm = false },
