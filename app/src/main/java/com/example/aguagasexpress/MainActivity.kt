@@ -1859,6 +1859,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
 
             configRegistration?.remove()
+            if (companyId.isNotBlank() && companyId != "companies") {
             configRegistration = companyConfigRef(firestore, companyId)
                 .addSnapshotListener { snapshot, error ->
                     if (disposed) return@addSnapshotListener
@@ -1946,6 +1947,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         companyConfigRef(firestore, companyId).set(initialConfig, SetOptions.merge())
                     }
                 }
+            }
         }
 
         if (auth.currentUser != null) {
