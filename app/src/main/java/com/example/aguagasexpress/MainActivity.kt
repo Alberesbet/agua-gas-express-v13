@@ -2160,7 +2160,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             .get()
                             .addOnSuccessListener { stats ->
                                 driverDailyStats = stats.documents.associate { doc ->
-                                    (doc.getLong("driver") ?: 0L).toInt() to Pair(
+                                    (doc.getLong("driver") ?: 0L).toInt() to Triple(
                                         (doc.getLong("deliveries") ?: 0L).toInt(),
                                         (doc.getLong("waterQty") ?: 0L).toInt(),
                                         (doc.getLong("gasQty") ?: 0L).toInt()
