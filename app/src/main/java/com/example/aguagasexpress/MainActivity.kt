@@ -2815,7 +2815,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("🔗 VINCULAR CLIENTES E ENTREGADORES", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                        Text("Envie estes links depois de instalar os APKs. Assim, os pedidos do cliente aparecem nesta empresa e no aplicativo do entregador.", color = Color.White, fontSize = 12.sp)
+                        Text("Envie o link correspondente para que o cliente ou entregador acesse o aplicativo, faça o cadastro e comece a usar. Os pedidos do cliente aparecerão nesta empresa e no aplicativo do entregador.", color = Color.White, fontSize = 12.sp)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { shareProfileInvite("cliente", "Cliente") }, modifier = Modifier.weight(1f)) {
                                 Text("LINK DO CLIENTE")
