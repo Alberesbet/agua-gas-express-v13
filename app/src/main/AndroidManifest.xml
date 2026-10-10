@@ -26,6 +26,15 @@
                 <data android:scheme="aguagasexpress" android:host="invite" />
             </intent-filter>
         </activity>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/apk_share_paths" />
+        </provider>
         <service android:name=".DeliveryLocationService" android:foregroundServiceType="location" android:exported="false" />
     </application>
 </manifest>

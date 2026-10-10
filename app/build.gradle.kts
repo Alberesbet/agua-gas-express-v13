@@ -12,7 +12,29 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 13
-        versionName = "13.0-test"
+        versionName = "13.1"
+    }
+    flavorDimensions += "perfil"
+    productFlavors {
+        create("desenvolvedor") {
+            dimension = "perfil"
+            // Keep developer/admin data isolated from the company/client app.
+            applicationIdSuffix = ".desenvolvedor"
+            versionNameSuffix = "-desenvolvedor"
+            buildConfigField("String", "DEFAULT_PROFILE", "\"proprietario\"")
+        }
+        create("cliente") {
+            dimension = "perfil"
+            applicationIdSuffix = ".cliente"
+            versionNameSuffix = "-cliente"
+            buildConfigField("String", "DEFAULT_PROFILE", "\"cliente\"")
+        }
+        create("entregador") {
+            dimension = "perfil"
+            applicationIdSuffix = ".entregador"
+            versionNameSuffix = "-entregador"
+            buildConfigField("String", "DEFAULT_PROFILE", "\"entregador\"")
+        }
     }
     buildTypes {
         release {
@@ -25,7 +47,24 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+}
+
+/**
+ * Gera os três APKs de depuração numa única tarefa, sem depender da variante
+ * selecionada no painel Build Variants do Android Studio.
+ */
+tasks.register("assembleAllProfilesDebug") {
+    group = "build"
+    description = "Compila os APKs Desenvolvedor, Cliente e Entregador."
+    dependsOn(
+        "assembleDesenvolvedorDebug",
+        "assembleClienteDebug",
+        "assembleEntregadorDebug"
+    )
 }
 
 dependencies {

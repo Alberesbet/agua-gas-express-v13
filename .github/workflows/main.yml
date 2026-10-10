@@ -1,9 +1,10 @@
-name: Publicar site GitHub Pages
+name: Construir APKs e publicar site
 
 on:
   push:
     branches:
       - master
+      - fix/apks-cliente-entregador-notebook
   workflow_dispatch:
 
 permissions:
@@ -16,9 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publicar:
+  construir-e-publicar:
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -26,6 +26,39 @@ jobs:
     steps:
       - name: Baixar arquivos do repositorio
         uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Gradle com permissões corretas
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle-8.13-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-8.13-bin.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
+
+      - name: Construir os três APKs
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
+
+      - name: Publicar os APKs para download no site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/downloads
+          cp app/build/outputs/apk/desenvolvedor/debug/*.apk public/downloads/AguaGasExpress-Desenvolvedor.apk
+          cp app/build/outputs/apk/cliente/debug/*.apk public/downloads/AguaGasExpress-Cliente.apk
+          cp app/build/outputs/apk/entregador/debug/*.apk public/downloads/AguaGasExpress-Entregador.apk
+          test -s public/downloads/AguaGasExpress-Desenvolvedor.apk
+          test -s public/downloads/AguaGasExpress-Cliente.apk
+          test -s public/downloads/AguaGasExpress-Entregador.apk
+          ls -lh public/downloads/
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5

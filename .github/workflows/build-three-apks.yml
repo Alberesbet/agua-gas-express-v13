@@ -1,0 +1,91 @@
+name: Build and publish three APK profiles
+
+on:
+  push:
+    branches:
+      - master
+      - fix/apks-cliente-entregador-notebook
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-three-apks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-apks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Gradle dependencies only
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-caches-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-caches-${{ runner.os }}-
+
+      - name: Install Gradle with executable permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle-8.13-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-8.13-bin.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
+
+      - name: Build all three APKs in one Gradle invocation
+        run: |
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
+
+      - name: Verify and rename all three APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp app/build/outputs/apk/desenvolvedor/debug/*.apk dist/AguaGasExpress-Desenvolvedor.apk
+          cp app/build/outputs/apk/cliente/debug/*.apk dist/AguaGasExpress-Cliente.apk
+          cp app/build/outputs/apk/entregador/debug/*.apk dist/AguaGasExpress-Entregador.apk
+          test -s dist/AguaGasExpress-Desenvolvedor.apk
+          test -s dist/AguaGasExpress-Cliente.apk
+          test -s dist/AguaGasExpress-Entregador.apk
+          sha256sum dist/*.apk
+          ls -lh dist/
+
+      - name: Upload all three APKs as build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AguaGasExpress-tres-APKs
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish downloadable APKs for the company app
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          target_commitish: ${{ github.sha }}
+          name: AguaGasExpress - APKs da versão mais recente
+          body: |
+            APKs gerados juntos pela compilação automatizada.
+            - Desenvolvedor: aplicativo administrativo.
+            - Cliente: instalador para clientes.
+            - Entregador: instalador para entregadores.
+          prerelease: true
+          make_latest: false
+          files: |
+            dist/AguaGasExpress-Desenvolvedor.apk
+            dist/AguaGasExpress-Cliente.apk
+            dist/AguaGasExpress-Entregador.apk
+          overwrite_files: true
+          fail_on_unmatched_files: true

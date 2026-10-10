@@ -24,8 +24,10 @@ import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -316,14 +318,31 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 2601)
         }
+        val defaultProfile = BuildConfig.DEFAULT_PROFILE
         val hasInvite = applyInviteIntent(intent, prefs)
-        if (!hasInvite && prefs.getString("company_id", "").isNullOrBlank() && prefs.getString("developer_password_hash", "").isNullOrBlank()) {
-            prefs.edit().putString("invite_profile", "proprietario").apply()
+
+        // Os APKs públicos de cliente e entregador não dependem de convite.
+        // Cada variante abre diretamente no fluxo de cadastro/acesso do seu perfil.
+        if (defaultProfile == "cliente" || defaultProfile == "entregador") {
+            prefs.edit()
+                .putString("company_role", if (defaultProfile == "cliente") "customer" else "delivery")
+                .remove("invite_profile")
+                .remove("invite_company_code")
+                .apply()
+        } else if (!hasInvite && prefs.getString("company_id", "").isNullOrBlank() &&
+            prefs.getString("developer_password_hash", "").isNullOrBlank() &&
+            prefs.getString("invite_profile", "").isNullOrBlank()) {
+            prefs.edit().putString("invite_profile", defaultProfile).apply()
         }
+
         setContent {
             AguaGasExpressTheme(darkTheme = true) {
                 Surface(Modifier.fillMaxSize(), color = Navy) {
-                    CommercialCompanyGate(prefs)
+                    if (defaultProfile == "cliente" || defaultProfile == "entregador") {
+                        AguaGasApp(prefs)
+                    } else {
+                        CommercialCompanyGate(prefs)
+                    }
                 }
             }
         }
@@ -1454,6 +1473,68 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
+    var apkDownloadInProgress by remember { mutableStateOf(false) }
+    fun downloadAndShareApk(role: String) {
+        if (apkDownloadInProgress) return
+        apkDownloadInProgress = true
+        message = "Baixando APK do $role..."
+        coroutineScope.launch {
+            try {
+                val apkFile = withContext(Dispatchers.IO) {
+                    val isClient = role.equals("Cliente", ignoreCase = true)
+                    val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+                    val downloadUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
+                    val targetDir = java.io.File(context.cacheDir, "downloaded-apks").apply { mkdirs() }
+                    val targetFile = java.io.File(targetDir, fileName)
+                    val tempFile = java.io.File(targetDir, "$fileName.part")
+                    val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+                        instanceFollowRedirects = true
+                        connectTimeout = 20000
+                        readTimeout = 60000
+                        requestMethod = "GET"
+                    }
+                    try {
+                        val status = connection.responseCode
+                        if (status !in 200..299) {
+                            throw IllegalStateException("O servidor ainda não publicou este APK (HTTP $status). Tente novamente após a geração da versão.")
+                        }
+                        connection.inputStream.use { input ->
+                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        if (tempFile.length() < 100_000L) {
+                            throw IllegalStateException("O arquivo recebido parece incompleto. Tente novamente.")
+                        }
+                        if (targetFile.exists()) targetFile.delete()
+                        if (!tempFile.renameTo(targetFile)) {
+                            tempFile.copyTo(targetFile, overwrite = true)
+                            tempFile.delete()
+                        }
+                    } finally {
+                        connection.disconnect()
+                    }
+                    targetFile
+                }
+                val apkUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    apkFile
+                )
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/vnd.android.package-archive"
+                    putExtra(Intent.EXTRA_STREAM, apkUri)
+                    clipData = android.content.ClipData.newUri(context.contentResolver, "APK $role", apkUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Enviar APK do $role"))
+                showShareLinksDialog = false
+                message = ""
+            } catch (e: Exception) {
+                message = "Não foi possível baixar/compartilhar o APK do $role: ${e.localizedMessage ?: "verifique a internet e tente novamente"}"
+            } finally {
+                apkDownloadInProgress = false
+            }
+        }
+    }
     var clientName by remember { mutableStateOf(prefs.getString("client_name", "") ?: "") }
     var clientPhone by remember { mutableStateOf(prefs.getString("client_phone", "") ?: "") }
     var clientDocType by remember { mutableStateOf(prefs.getString("client_doc_type", "CPF") ?: "CPF") }
@@ -2467,48 +2548,33 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { showShareLinksDialog = true }) {
-                        Text("🔗 Enviar links", color = LightBlue)
+                        Text("📦 Enviar APKs", color = LightBlue)
                     }
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
 
                 if (showShareLinksDialog) {
-                    val code = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
-                    val customerDirectLink = makeInviteLink("cliente", code)
-                    val deliveryDirectLink = makeInviteLink("entregador", code)
-
-                    fun shareInvite(title: String, direct: String, roleName: String) {
-                        val text = "📱 Água & Gás Express — $roleName\n\nLINK ÚNICO DO CONVITE:\n$direct\n\nSe o aplicativo já estiver instalado, ele abre direto. Caso contrário, a página Web orienta o download do aplicativo Android."
-                        try {
-                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, title)
-                                putExtra(Intent.EXTRA_TEXT, text)
-                            }, "Enviar link do $roleName"))
-                        } catch (_: Exception) {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(title, text))
-                            message = "Não foi possível abrir o compartilhamento. O convite foi copiado."
-                        }
-                        showShareLinksDialog = false
-                    }
-
                     AlertDialog(
                         onDismissRequest = { showShareLinksDialog = false },
-                        title = { Text("📲 Enviar aplicativo") },
+                        title = { Text("📦 Enviar aplicativo APK") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Escolha o tipo de acesso. O aplicativo é o mesmo, mas o convite identifica se o aparelho será de cliente ou entregador.", color = Color.DarkGray)
-                                Text("👤 Cliente", fontWeight = FontWeight.Bold)
-                                Text("Link direto: $customerDirectLink", fontSize = 11.sp, color = Color.Gray)
-                                Text("🚚 Entregador", fontWeight = FontWeight.Bold)
-                                Text("Link direto: $deliveryDirectLink", fontSize = 11.sp, color = Color.Gray)
+                                Text(
+                                    if (apkDownloadInProgress) "Baixando o APK escolhido. Aguarde..."
+                                    else "Escolha o aplicativo. O APK será baixado automaticamente e o menu de compartilhamento será aberto, sem precisar procurar arquivos no celular.",
+                                    color = Color.DarkGray
+                                )
+                                Text("Os downloads recebem a versão mais recente publicada pelo projeto.", color = Color.DarkGray, fontSize = 12.sp)
                             }
                         },
                         confirmButton = {
                             Column(horizontalAlignment = Alignment.End) {
-                                TextButton(onClick = { shareInvite("Comércio Express — Cliente", customerDirectLink, "Cliente") }) { Text("👤 ENVIAR LINK DO CLIENTE") }
-                                TextButton(onClick = { shareInvite("Comércio Express — Entregador", deliveryDirectLink, "Entregador") }) { Text("🚚 ENVIAR LINK DO ENTREGADOR") }
+                                TextButton(onClick = {
+                                    downloadAndShareApk("Cliente")
+                                }, enabled = !apkDownloadInProgress) { Text(if (apkDownloadInProgress) "BAIXANDO..." else "👤 ENVIAR APK DO CLIENTE") }
+                                TextButton(onClick = {
+                                    downloadAndShareApk("Entregador")
+                                }, enabled = !apkDownloadInProgress) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
                             }
                         },
                         dismissButton = {
