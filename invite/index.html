@@ -2,72 +2,72 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1730">
 <title>Água &amp; Gás Express — Convite</title>
-
 <style>
-body{
-  font-family:Arial,sans-serif;
-  background:#0b1730;
-  color:#fff;
-  margin:0;
-  padding:24px;
-  text-align:center;
-}
-main{
-  max-width:560px;
-  margin:24px auto;
-  background:#173b62;
-  padding:28px 22px;
-  border-radius:20px;
-  box-sizing:border-box;
-}
-h1{color:#ff8a32;margin:0 0 8px}
-h2{margin:8px 0 12px}
-.muted{color:#bfe6ff;line-height:1.55}
-a{
-  display:block;
-  margin-top:14px;
-  padding:15px 18px;
-  border-radius:12px;
-  background:#16834a;
-  color:#fff;
-  font-weight:700;
-  text-decoration:none;
-  cursor:pointer;
-}
-a.secondary{background:#1688e8}
-.small{
-  font-size:12px;
-  color:#bfe6ff;
-  margin-top:16px;
-  line-height:1.45;
-}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#0b1730;color:#fff;margin:0;padding:18px}
+main{max-width:560px;margin:12px auto;background:#173b62;padding:24px 20px;border-radius:20px}
+h1{color:#ff8a32;text-align:center;margin:0 0 8px}h2{text-align:center;margin:8px 0 14px}
+.muted{color:#d1eaff;line-height:1.5;text-align:center}
+label{display:block;font-weight:700;margin:13px 0 6px}
+input,select{width:100%;padding:13px;border-radius:9px;border:1px solid #8aa9c9;font-size:16px;background:#fff;color:#172033}
+button,a.btn{display:block;width:100%;margin-top:14px;padding:15px 12px;border:0;border-radius:11px;background:#16834a;color:#fff;font-size:15px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1.5;text-align:center;margin-top:16px}
+#status{padding:12px;border-radius:8px;background:#0b2a46;line-height:1.45;overflow-wrap:anywhere}
+.hidden{display:none!important}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </style>
 </head>
-
 <body>
 <main>
 <h1>Água &amp; Gás Express</h1>
 <h2 id="title">Convite</h2>
 <p class="muted" id="msg">Preparando o acesso...</p>
+<div id="registration" class="hidden">
+<form id="customerForm">
+<label for="name">Nome completo *</label><input id="name" autocomplete="name" required maxlength="100">
+<label for="phone">Telefone com DDD *</label><input id="phone" autocomplete="tel" inputmode="tel" required maxlength="20" placeholder="(81) 99999-9999">
+<div class="grid">
+<div><label for="docType">Documento</label><select id="docType"><option value="">Não informar</option><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select></div>
+<div><label for="docNumber">CPF/CNPJ (opcional)</label><input id="docNumber" inputmode="numeric" maxlength="18"></div>
+</div>
+<label for="cep">CEP *</label><input id="cep" autocomplete="postal-code" inputmode="numeric" required maxlength="9" placeholder="00000-000">
+<label for="address">Rua / endereço *</label><input id="address" autocomplete="street-address" required maxlength="160">
+<label for="number">Número da casa *</label><input id="number" required maxlength="20">
+<button id="submitBtn" type="submit">CONCLUIR CADASTRO PELO LINK</button>
+</form>
+</div>
 <div id="actions"></div>
+<p id="status" role="status" class="hidden"></p>
 <p class="small" id="info"></p>
 </main>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
-<script>
-const p = new URLSearchParams(location.search);
-const perfil = (p.get('perfil') || '').toLowerCase();
-const empresa = (p.get('empresa') || '').toUpperCase();
-
+const firebaseConfig = {
+  apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
+  authDomain: 'agua-e-gas-express.firebaseapp.com',
+  projectId: 'agua-e-gas-express',
+  storageBucket: 'agua-e-gas-express.firebasestorage.app',
+  messagingSenderId: '1071136912572',
+  // appId web omitted: this page uses Firebase Auth and Firestore only.
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const params = new URLSearchParams(location.search);
+const perfil = (params.get('perfil') || '').toLowerCase();
+const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
 const title = document.getElementById('title');
 const msg = document.getElementById('msg');
 const actions = document.getElementById('actions');
 const info = document.getElementById('info');
-
-const base = 'https://agua-e-gas-express.web.app/';
+const status = document.getElementById('status');
+const registration = document.getElementById('registration');
 const downloads = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/';
-
+const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build';
 const apk = {
   empresa: downloads + 'AguaGasExpress-Desenvolvedor.apk',
   cliente: downloads + 'AguaGasExpress-Cliente.apk',
@@ -75,83 +75,84 @@ const apk = {
   proprietario: downloads + 'AguaGasExpress-Desenvolvedor.apk'
 }[perfil] || '';
 
-function inviteUrl(){
-  return base + 'invite?perfil=' +
-    encodeURIComponent(perfil) +
-    '&empresa=' + encodeURIComponent(empresa);
-}
-
 function addButton(label, href, secondary=false){
-  const a = document.createElement('a');
-  a.href = href;
-  a.textContent = label;
-  a.style.touchAction = 'manipulation';
-  if(secondary) a.className = 'secondary';
-  actions.appendChild(a);
-  return a;
+  const a=document.createElement('a'); a.href=href; a.textContent=label; a.className='btn'+(secondary?' secondary':''); actions.appendChild(a); return a;
+}
+function showStatus(text){status.textContent=text;status.classList.remove('hidden')}
+function digits(value){return value.replace(/\D/g,'')}
+function normalizeDoc(value){return digits(value).slice(0,14)}
+async function customerDocId(phone){
+  const data=new TextEncoder().encode(digits(phone));
+  const digest=await crypto.subtle.digest('SHA-256',data);
+  let binary=''; new Uint8Array(digest).forEach(b=>binary+=String.fromCharCode(b));
+  return btoa(binary).slice(0,32);
 }
 
-function appPackage(){
-  // O projeto Android publicado usa um único applicationId para todos os perfis.
-  return perfil === 'cliente' ? 'com.example.aguagasexpress.cliente' :
-    perfil === 'entregador' ? 'com.example.aguagasexpress.entregador' :
-    'com.example.aguagasexpress';
+if(perfil==='cliente'){
+  title.textContent='Cadastro do Cliente';
+  if(!empresa){
+    msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
+    showStatus('Cadastro não iniciado: falta o código da empresa no convite.');
+  }else{
+    msg.textContent='Faça seu cadastro por esta página. Não precisa instalar o APK para se cadastrar. A empresa vinculada a este convite é '+empresa+'.';
+    registration.classList.remove('hidden');
+    info.textContent='Depois do cadastro, esta página confirma o envio dos seus dados. Para fazer pedidos pelo aplicativo, você poderá instalar o app posteriormente.';
+  }
+}else if(perfil==='entregador'){
+  title.textContent='Acesso do Entregador';
+  msg.textContent='Para usar as funções de entrega, baixe e instale o aplicativo do Entregador.';
+  addButton('BAIXAR APK DO ENTREGADOR',apk);
+  addButton('Se o download não começar, abrir a página de downloads',releasePage,true);
+  info.textContent='Código da empresa: '+(empresa||'não informado');
+}else if(perfil==='empresa'){
+  title.textContent='Acesso da Empresa';
+  msg.textContent='Baixe o aplicativo da Empresa ou abra o painel no notebook.';
+  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
+  addButton('ABRIR PAINEL DA EMPRESA NO NOTEBOOK','https://agua-e-gas-express.web.app/empresa/?empresa='+encodeURIComponent(empresa),true);
+}else if(perfil==='proprietario'){
+  title.textContent='Acesso do Desenvolvedor';
+  msg.textContent='Baixe o aplicativo do Desenvolvedor.';
+  addButton('BAIXAR APLICATIVO DO DESENVOLVEDOR',apk);
+  addButton('Página alternativa de downloads',releasePage,true);
+}else{
+  title.textContent='Convite inválido';
+  msg.textContent='O link não contém um perfil válido. Solicite um novo link à empresa.';
 }
 
-function appIntentUrl(){
-  // Abre o esquema personalizado registrado no AndroidManifest.xml.
-  return 'intent://invite?perfil=' +
-    encodeURIComponent(perfil) +
-    '&empresa=' + encodeURIComponent(empresa) +
-    '&plataforma=android#Intent;scheme=aguagasexpress;package=' +
-    appPackage() + ';end';
-}
-
-function addOpenAppButton(label){
-  const a = addButton(label, '#', true);
-  a.addEventListener('click', function(ev){
-    ev.preventDefault();
-    window.location.href = appIntentUrl();
-  });
-}
-
-if(perfil === 'empresa'){
-  title.textContent = 'Acesso da Empresa';
-  msg.textContent = 'Baixe o aplicativo da Empresa ou acesse pelo Notebook.';
-  addButton('📱 BAIXAR APLICATIVO ANDROID', apk);
-  addButton(
-    '💻 ABRIR PÁGINA DA EMPRESA NO NOTEBOOK',
-    base + 'empresa/?empresa=' + encodeURIComponent(empresa),
-    true
-  );
-  info.textContent = 'Código da empresa: ' + (empresa || 'não informado');
-
-} else if(perfil === 'cliente'){
-  title.textContent = 'Acesso do Cliente';
-  msg.textContent = '1º passo: baixe e instale o APK do Cliente. Depois, volte a este mesmo convite e toque em ABRIR NO APLICATIVO para concluir o acesso à empresa.';
-  addButton('⬇️ 1º PASSO — BAIXAR APK DO CLIENTE', apk);
-  addButton('Se o download não começar, abrir a página de downloads', 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build', true);
-  addOpenAppButton('✅ 2º PASSO — ABRIR NO APLICATIVO');
-  info.textContent = 'Empresa do convite: ' + (empresa || 'não informada');
-
-} else if(perfil === 'entregador'){
-  title.textContent = 'Acesso do Entregador';
-  msg.textContent = '1º passo: baixe e instale o APK do Entregador. Depois, volte a este mesmo convite e toque em ABRIR NO APLICATIVO para concluir o acesso à empresa.';
-  addButton('⬇️ 1º PASSO — BAIXAR APK DO ENTREGADOR', apk);
-  addButton('Se o download não começar, abrir a página de downloads', 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build', true);
-  addOpenAppButton('✅ 2º PASSO — ABRIR NO APLICATIVO');
-  info.textContent = 'Empresa do convite: ' + (empresa || 'não informada');
-
-} else if(perfil === 'proprietario'){
-  title.textContent = 'Acesso do Desenvolvedor';
-  msg.textContent = 'Baixe o aplicativo do Desenvolvedor.';
-  addButton('📱 BAIXAR APLICATIVO DO DESENVOLVEDOR', apk);
-  info.textContent = 'Água & Gás Express';
-
-} else {
-  title.textContent = 'Convite inválido';
-  msg.textContent = 'O link não contém um perfil válido. Solicite um novo link.';
-}
+document.getElementById('customerForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const button=document.getElementById('submitBtn');
+  const name=document.getElementById('name').value.trim();
+  const phone=document.getElementById('phone').value.trim();
+  const docType=document.getElementById('docType').value;
+  const documentNumber=normalizeDoc(document.getElementById('docNumber').value);
+  const cep=digits(document.getElementById('cep').value);
+  const street=document.getElementById('address').value.trim();
+  const number=document.getElementById('number').value.trim();
+  if(!empresa){showStatus('O código da empresa não foi encontrado. Solicite outro convite.');return;}
+  if(digits(phone).length<10){showStatus('Informe um telefone com DDD.');return;}
+  if(cep.length!==8){showStatus('Informe um CEP válido com 8 números.');return;}
+  if(documentNumber && ((docType==='CPF'&&documentNumber.length!==11)||(docType==='CNPJ'&&documentNumber.length!==14)||!docType)){showStatus('Confira o tipo e o número do CPF/CNPJ, ou deixe o documento em branco.');return;}
+  button.disabled=true;button.textContent='ENVIANDO CADASTRO…';
+  try{
+    const credential=await signInAnonymously(auth);
+    const uid=credential.user.uid;
+    const address=street+', '+number;
+    const id=await customerDocId(phone);
+    await setDoc(doc(db,'customers',id),{
+      uid,name,phone,documentType:docType,documentNumber,cep,address,active:true,
+      companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    document.getElementById('customerForm').classList.add('hidden');
+    showStatus('Cadastro enviado com sucesso! Você foi cadastrado pelo link da empresa '+empresa+'. Não foi necessário instalar o APK.');
+    msg.textContent='Cadastro concluído.';
+  }catch(error){
+    console.error(error);
+    showStatus('Não foi possível salvar o cadastro agora. Verifique a conexão e tente novamente. Se continuar, a configuração de autenticação/permissões do Firebase precisa ser conferida.');
+    button.disabled=false;button.textContent='TENTAR ENVIAR CADASTRO NOVAMENTE';
+  }
+});
 </script>
 </body>
 </html>
