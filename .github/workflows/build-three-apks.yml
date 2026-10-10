@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - fix/apks-cliente-entregador-notebook
+      - fix/preserve-working-firebase-invite
   workflow_dispatch:
 
 permissions:
@@ -71,6 +72,7 @@ jobs:
           retention-days: 90
 
       - name: Publish downloadable APKs for the company app
+        if: github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-build
