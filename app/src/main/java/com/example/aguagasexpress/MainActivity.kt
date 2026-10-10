@@ -1457,19 +1457,19 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 if (masterCompanyMessage.isNotBlank()) Text(masterCompanyMessage, color = LightBlue, textAlign = TextAlign.Center, fontSize = 12.sp)
                 Spacer(Modifier.height(10.dp))
                 Text("CONTROLE DA LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                if (!masterLicensePermanent) {
-                    Text("LIBERAR / TROCAR PLANO DE TESTE", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        listOf(10, 15, 30).forEach { days ->
-                            Button(
-                                enabled = !loading,
-                                onClick = { setCompanyTrial(days) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = if (masterLicenseDays == days) Green else Color(0xFF315A85))
-                            ) { Text("$days DIAS", fontSize = 11.sp) }
-                        }
+                Text("LIBERAR / TROCAR PLANO DE TESTE", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf(10, 15, 30).forEach { days ->
+                        Button(
+                            enabled = !loading,
+                            onClick = { setCompanyTrial(days) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = if (!masterLicensePermanent && masterLicenseDays == days) Green else Color(0xFF315A85))
+                        ) { Text("$days DIAS", fontSize = 11.sp) }
                     }
-                    Spacer(Modifier.height(8.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+                if (!masterLicensePermanent) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(masterExtensionDays, { masterExtensionDays = it.filter(Char::isDigit).take(3) }, label = { Text("Dias a acrescentar") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         Button(enabled = !loading, onClick = { extendCompanyTrial() }, modifier = Modifier.weight(1f)) { Text("+ DIAS") }
