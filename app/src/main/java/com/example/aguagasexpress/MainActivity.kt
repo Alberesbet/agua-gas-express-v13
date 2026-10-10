@@ -1304,7 +1304,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }
     }
 
-    fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "")
+    fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
         val direct = makeInviteLink("empresa", normalized)
