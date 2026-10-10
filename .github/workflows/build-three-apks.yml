@@ -17,21 +17,23 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
+      - name: Set up Gradle with dependency and build cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
-      - name: Make Gradle wrapper and distribution executable
-        run: |
-          chmod +x ./gradlew
-          ./gradlew --version || true
-          chmod +x "$HOME"/.gradle/wrapper/dists/gradle-8.13-bin/gradle-8.13/bin/gradle || true
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
 
       - name: Build developer, client and delivery APKs
-        run: ./gradlew --no-daemon assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
+        run: ./gradlew --stacktrace --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
 
       - name: Rename APKs for easy identification
         run: |
