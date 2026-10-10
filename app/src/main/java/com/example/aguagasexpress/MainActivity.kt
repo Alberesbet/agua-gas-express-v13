@@ -1476,6 +1476,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 message = "Não foi possível compartilhar o APK selecionado: ${e.localizedMessage ?: "tente novamente"}"
             }
         }
+    }
     var clientName by remember { mutableStateOf(prefs.getString("client_name", "") ?: "") }
     var clientPhone by remember { mutableStateOf(prefs.getString("client_phone", "") ?: "") }
     var clientDocType by remember { mutableStateOf(prefs.getString("client_doc_type", "CPF") ?: "CPF") }
