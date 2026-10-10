@@ -448,7 +448,7 @@ private fun announcePaymentConfirmed(context: Context) {
 private fun announceOrderSentToDelivery(context: Context) {
     announceCustomerVoice(
         context,
-        "Seu pedido foi confirmado.",
+        "Seu pedido foi enviado para entrega.",
         "aguagas_pedido_enviado_entrega"
     )
 }
@@ -3643,7 +3643,7 @@ private fun ApkTransferPanel() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text("📦 APKs PARA ENVIAR À EMPRESA", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Baixe ou gere os APKs no Android. Escolha cada arquivo aqui uma vez; eles ficam guardados no aplicativo do desenvolvedor para você enviar quando quiser.", color = Color.White, fontSize = 13.sp)
+            Text("Baixe os APKs mais recentes já compilados. Você também pode escolher arquivos APK guardados no aparelho; eles ficam salvos no aplicativo do desenvolvedor para enviar quando precisar.", color = Color.White, fontSize = 13.sp)
             Button(
                 onClick = { downloadLatestApk("Cliente") },
                 enabled = !busy,
