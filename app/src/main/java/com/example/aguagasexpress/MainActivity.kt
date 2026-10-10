@@ -1182,9 +1182,18 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         ensureFirebase {
             val uid = auth.currentUser?.uid.orEmpty()
             if (uid.isBlank()) return@ensureFirebase
-            firestore.collection("companies").whereEqualTo("ownerUid", uid).get()
+            // O painel do Desenvolvedor lista todas as empresas, não apenas as ligadas ao UID anônimo atual.
+            firestore.collection("companies").get()
                 .addOnSuccessListener { snap ->
                     masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                    if (masterCompanyDocs.isEmpty()) {
+                        masterCompanyId = ""
+                        masterCompanyCode = ""
+                        masterCompanyName = ""
+                        masterCompanyEmail = ""
+                        masterCompanyPhone = ""
+                        return@addOnSuccessListener
+                    }
                     val doc = masterCompanyDocs.firstOrNull() ?: return@addOnSuccessListener
                     masterCompanyId = doc.id
                     masterCompanyCode = doc.getString("companyCode") ?: ""
@@ -1638,6 +1647,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 "appVersion" to "12.0-test")
                         firestore.collection("companies").document(id).set(data).addOnSuccessListener {
                             masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
+                            loadLatestMasterCompany()
                         }.addOnFailureListener { e -> loading = false; error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}" }
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CADASTRANDO..." else "CADASTRAR EMPRESA") }
