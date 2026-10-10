@@ -37,8 +37,14 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
+      - name: Fix Gradle wrapper executable permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          find "$HOME/.gradle/wrapper/dists/gradle-8.13-bin" -type f -path '*/bin/gradle' -exec chmod +x {} + 2>/dev/null || true
+          ./gradlew --version
+          find "$HOME/.gradle/wrapper/dists/gradle-8.13-bin" -type f -path '*/bin/gradle' -exec chmod +x {} +
 
       - name: Build all three APKs in one Gradle invocation
         run: ./gradlew --build-cache --parallel assembleDesenvolvedorDebug assembleClienteDebug assembleEntregadorDebug
