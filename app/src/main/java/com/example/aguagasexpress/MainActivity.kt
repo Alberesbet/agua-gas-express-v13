@@ -318,17 +318,31 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 2601)
         }
+        val defaultProfile = BuildConfig.DEFAULT_PROFILE
         val hasInvite = applyInviteIntent(intent, prefs)
-        if (!hasInvite && prefs.getString("company_id", "").isNullOrBlank() &&
+
+        // Os APKs públicos de cliente e entregador não dependem de convite.
+        // Cada variante abre diretamente no fluxo de cadastro/acesso do seu perfil.
+        if (defaultProfile == "cliente" || defaultProfile == "entregador") {
+            prefs.edit()
+                .putString("company_role", if (defaultProfile == "cliente") "customer" else "delivery")
+                .remove("invite_profile")
+                .remove("invite_company_code")
+                .apply()
+        } else if (!hasInvite && prefs.getString("company_id", "").isNullOrBlank() &&
             prefs.getString("developer_password_hash", "").isNullOrBlank() &&
             prefs.getString("invite_profile", "").isNullOrBlank()) {
-            // A instalação limpa de cada variante já abre no perfil correspondente.
-            prefs.edit().putString("invite_profile", BuildConfig.DEFAULT_PROFILE).apply()
+            prefs.edit().putString("invite_profile", defaultProfile).apply()
         }
+
         setContent {
             AguaGasExpressTheme(darkTheme = true) {
                 Surface(Modifier.fillMaxSize(), color = Navy) {
-                    CommercialCompanyGate(prefs)
+                    if (defaultProfile == "cliente" || defaultProfile == "entregador") {
+                        AguaGasApp(prefs)
+                    } else {
+                        CommercialCompanyGate(prefs)
+                    }
                 }
             }
         }
