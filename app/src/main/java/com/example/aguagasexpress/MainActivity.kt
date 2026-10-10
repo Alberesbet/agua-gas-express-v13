@@ -305,7 +305,48 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Diagnóstico temporário apenas para Cliente/Entregador: registra o erro fatal
+        // e mostra a causa na próxima abertura, em vez de ficar sem nenhuma pista.
+        val diagnosticProfile = BuildConfig.DEFAULT_PROFILE == "cliente" ||
+            BuildConfig.DEFAULT_PROFILE == "entregador"
+        if (diagnosticProfile) {
+            val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                runCatching {
+                    getSharedPreferences("agua_gas_crash_diagnostics", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(
+                            "last_crash",
+                            "Perfil: ${BuildConfig.DEFAULT_PROFILE}\\nAndroid: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})\\n" +
+                                android.util.Log.getStackTraceString(throwable).take(12000)
+                        )
+                        .commit()
+                }
+                previousHandler?.uncaughtException(thread, throwable)
+            }
+        }
         super.onCreate(savedInstanceState)
+        if (diagnosticProfile) {
+            val diagnosticPrefs = getSharedPreferences("agua_gas_crash_diagnostics", Context.MODE_PRIVATE)
+            val previousCrash = diagnosticPrefs.getString("last_crash", null)
+            if (!previousCrash.isNullOrBlank()) {
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("Diagnóstico do aplicativo")
+                    .setMessage("O Android registrou um erro na abertura anterior. Envie uma foto desta mensagem para identificarmos a causa.\\n\\n" + previousCrash.take(5000))
+                    .setPositiveButton("COPIAR ERRO") { _, _ ->
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Erro Água & Gás Express", previousCrash))
+                        android.widget.Toast.makeText(this, "Erro copiado. Cole a mensagem nesta conversa.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    .setNegativeButton("TENTAR ABRIR") { _, _ ->
+                        diagnosticPrefs.edit().remove("last_crash").apply()
+                        recreate()
+                    }
+                    .setCancelable(false)
+                    .show()
+                return
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(android.app.NotificationManager::class.java)
             manager.createNotificationChannel(android.app.NotificationChannel("pedidos_novos", "Novos pedidos", android.app.NotificationManager.IMPORTANCE_HIGH).apply {
