@@ -1514,8 +1514,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     targetFile
                 }
                 message = "APK do $role guardado no aplicativo: " + savedFile.name + ". Agora você pode enviá-lo quando quiser."
+                android.widget.Toast.makeText(context, "CONFIRMADO: APK do $role recebido e salvo no celular.", android.widget.Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 message = "Não foi possível guardar o APK do $role: " + (e.localizedMessage ?: "verifique se escolheu o arquivo correto")
+                android.widget.Toast.makeText(context, "FALHA: o APK do $role não foi salvo.", android.widget.Toast.LENGTH_LONG).show()
             } finally {
                 apkOperationInProgress = false
             }
@@ -3353,8 +3355,10 @@ private fun ApkTransferPanel() {
                     }
                 }
                 status = "APK do $role guardado no desenvolvedor. Você pode enviá-lo agora ou mais tarde."
+                android.widget.Toast.makeText(context, "CONFIRMADO: APK do $role recebido e salvo no desenvolvedor.", android.widget.Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 status = "Falha ao guardar o APK do $role: " + (e.localizedMessage ?: "tente novamente")
+                android.widget.Toast.makeText(context, "FALHA: o APK do $role não foi salvo.", android.widget.Toast.LENGTH_LONG).show()
             } finally {
                 busy = false
             }
