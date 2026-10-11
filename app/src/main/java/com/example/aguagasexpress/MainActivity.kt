@@ -1594,7 +1594,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {
-                                        android.app.AlertDialog.Builder(this@MainActivity)
+                                        android.app.AlertDialog.Builder(context)
                                             .setTitle("Excluir empresa")
                                             .setMessage("Deseja realmente excluir ${listedName} (código ${listedCode})? Esta ação remove o cadastro principal e a configuração principal da empresa.")
                                             .setNegativeButton("CANCELAR", null)
