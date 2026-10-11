@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1730"><title>Água & Gás Express — Painel da Empresa</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef3f8;color:#172033;font-family:Arial,sans-serif;padding:16px}
+main{max-width:1000px;margin:auto}header{background:#102b49;color:white;padding:22px;border-radius:16px}
+h1{margin:0;color:#ff963f}h2{margin-top:0}.muted{line-height:1.5;color:#dbeafe}
+.card{background:white;padding:18px;border-radius:14px;margin:14px 0;box-shadow:0 2px 9px #0b173012}
+label{display:block;font-weight:bold;margin:12px 0 6px}input{width:100%;padding:13px;border:1px solid #bac8d8;border-radius:8px;font-size:16px}
+button{width:100%;padding:14px;border:0;border-radius:9px;background:#087443;color:white;font-weight:bold;font-size:15px;margin-top:12px;cursor:pointer}
+.secondary{background:#1757a6}.hidden{display:none!important}.status{padding:12px;background:#edf6ff;border-radius:8px;overflow-wrap:anywhere;line-height:1.45}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.tile{background:#f5f8fc;padding:16px;border-radius:10px}.num{font-size:25px;font-weight:bold}
+.item{padding:12px 0;border-bottom:1px solid #e1e8f0;overflow-wrap:anywhere}.small{font-size:12px;color:#5b6b7c;line-height:1.5}
+</style></head>
+<body><main>
+<header><h1>Água &amp; Gás Express</h1><h2>Painel Web da Empresa</h2><p class="muted">Acesse pelo celular ou notebook. Entre com seu e-mail autorizado pela empresa.</p></header>
+<section class="card" id="authCard">
+<h2 id="authTitle">Entrar na Empresa</h2>
+<p class="small">Primeiro acesso: crie sua senha com o e-mail autorizado pela empresa. Nos próximos acessos, entre com o mesmo e-mail e senha.</p>
+<label for="company">Código da empresa</label><input id="company" autocomplete="organization" maxlength="20" placeholder="Ex.: 570476">
+<label for="email">E-mail autorizado</label><input id="email" type="email" autocomplete="email" required>
+<label for="password">Senha (mínimo 6 caracteres)</label><input id="password" type="password" autocomplete="current-password" minlength="6" required>
+<button id="login">ENTRAR NO PAINEL</button><button class="secondary" id="register">CRIAR SENHA — PRIMEIRO ACESSO</button>
+<p id="authStatus" class="status" role="status">Informe o código da empresa e o e-mail autorizado.</p>
+</section>
+<section id="dashboard" class="hidden">
+<div class="card"><h2 id="welcome">Painel</h2><p id="companyStatus" class="status"></p><button id="refresh" class="secondary">ATUALIZAR DADOS</button><button id="logout">SAIR DA CONTA</button></div>
+<div class="tiles">
+<div class="tile"><div>Clientes cadastrados</div><div class="num" id="customerCount">—</div></div>
+<div class="tile"><div>Pedidos encontrados</div><div class="num" id="orderCount">—</div></div>
+</div>
+<div class="card"><h2>Clientes vinculados</h2><p class="small">Clientes cadastrados pelo convite desta empresa, mesmo que ainda não tenham feito pedido.</p><div id="customers">Carregando…</div></div>
+<div class="card"><h2>Pedidos</h2><p class="small">A lista só será preenchida se os pedidos estiverem na coleção padrão “orders” com o campo “companyCode”.</p><div id="orders">Carregando…</div></div>
+</section>
+<p class="small">O acesso depende do e-mail cadastrado na empresa no sistema. Se o e-mail não estiver autorizado, procure o Desenvolvedor. Não compartilhe sua senha.</p>
+</main>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import {getFirestore,collection,query,where,getDocs,limit} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+const firebaseConfig={apiKey:'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',authDomain:'agua-e-gas-express.firebaseapp.com',projectId:'agua-e-gas-express',storageBucket:'agua-e-gas-express.firebasestorage.app',messagingSenderId:'1071136912572'};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);
+$('company').value=(params.get('empresa')||'').toUpperCase();
+let verifiedCompany=null;
+function status(text){$('authStatus').textContent=text}
+function safe(v){return String(v??'—')}
+function addText(container,text){const div=document.createElement('div');div.className='item';div.textContent=text;container.appendChild(div)}
+async function findCompany(code,email){
+ const snap=await getDocs(query(collection(db,'companies'),where('companyCode','==',code),limit(10)));
+ return snap.docs.find(d=>{const x=d.data();return String(x.email||x.authorizedEmail||'').trim().toLowerCase()===email.toLowerCase()});
+}
+async function verifyAndOpen(user){
+ const code=$('company').value.trim().toUpperCase(),email=(user.email||$('email').value).trim().toLowerCase();
+ if(!code){throw new Error('Informe o código da empresa enviado pelo Desenvolvedor.')}
+ const found=await findCompany(code,email);
+ if(!found){throw new Error('Não encontrei uma empresa com esse código e esse e-mail autorizado. Confira os dados ou peça ao Desenvolvedor para confirmar o e-mail.')}
+ verifiedCompany={id:found.id,...found.data()};
+ $('authCard').classList.add('hidden');$('dashboard').classList.remove('hidden');
+ $('welcome').textContent='Olá, '+safe(verifiedCompany.name)+'!';
+ $('companyStatus').textContent='Empresa vinculada: '+code+' • E-mail: '+email;
+ await loadData(code);
+}
+async function loadData(code){
+ $('customers').textContent='Carregando clientes…';$('orders').textContent='Carregando pedidos…';
+ const cs=await getDocs(query(collection(db,'customers'),where('companyCode','==',code),limit(300)));
+ $('customerCount').textContent=cs.size;$('customers').replaceChildren();
+ if(!cs.size)addText($('customers'),'Nenhum cliente cadastrado para esta empresa ainda.');
+ cs.forEach(d=>{const x=d.data();addText($('customers'),safe(x.name)+' • '+safe(x.phone)+' • '+safe(x.address))});
+ try{const os=await getDocs(query(collection(db,'orders'),where('companyCode','==',code),limit(300)));$('orderCount').textContent=os.size;$('orders').replaceChildren();if(!os.size)addText($('orders'),'Nenhum pedido encontrado na coleção “orders” para esta empresa.');os.forEach(d=>{const x=d.data();addText($('orders'),'Pedido '+d.id+' • '+safe(x.status||x.situacao)+' • '+safe(x.customerName||x.nomeCliente||x.name)+' • '+safe(x.total||x.valor))})}
+ catch(e){$('orderCount').textContent='—';$('orders').textContent='Não foi possível ler os pedidos: '+(e.code||e.message)}
+}
+$('login').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value;if(!email||!password)throw new Error('Informe e-mail e senha.');status('Verificando acesso…');const c=await signInWithEmailAndPassword(auth,email,password);await verifyAndOpen(c.user)}catch(e){status('Não foi possível entrar: '+(e.code==='auth/invalid-credential'?'e-mail ou senha incorretos.':e.message||e.code))}});
+$('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value,code=$('company').value.trim().toUpperCase();if(!code||!email||password.length<6)throw new Error('Informe código, e-mail e senha com pelo menos 6 caracteres.');status('Conferindo o e-mail autorizado…');const found=await findCompany(code,email);if(!found)throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. Nenhuma conta foi criada.');await createUserWithEmailAndPassword(auth,email,password);status('Senha criada. Abrindo painel…');await verifyAndOpen(auth.currentUser)}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/email-already-in-use'?'esse e-mail já tem conta; use ENTRAR NO PAINEL.':e.message||e.code))}});
+$('refresh').addEventListener('click',()=>loadData($('company').value.trim().toUpperCase()).catch(e=>$('companyStatus').textContent='Erro ao atualizar: '+(e.message||e.code)));
+$('logout').addEventListener('click',async()=>{await signOut(auth);$('dashboard').classList.add('hidden');$('authCard').classList.remove('hidden');status('Você saiu da conta.')});
+onAuthStateChanged(auth,user=>{if(!user)return;/* A abertura exige validação explícita do código e e-mail neste dispositivo. */});
+</script></body></html>
