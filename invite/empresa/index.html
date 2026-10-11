@@ -37,6 +37,25 @@ button{width:100%;padding:14px;border:0;border-radius:9px;background:#087443;col
 </section>
 <p class="small">O acesso depende do e-mail cadastrado na empresa no sistema. Se o e-mail não estiver autorizado, procure o Desenvolvedor. Não compartilhe sua senha.</p>
 </main>
+<script>
+// Os botões de navegação funcionam mesmo se o módulo do Firebase demorar a carregar.
+window.setCompanyAccessMode = function(mode) {
+  const reg = mode === 'register';
+  document.getElementById('authTitle').textContent = reg ? 'Cadastrar acesso da Empresa' : 'Entrar na Empresa';
+  document.getElementById('loginFields').classList.toggle('hidden', reg);
+  document.getElementById('registerFields').classList.toggle('hidden', !reg);
+  document.getElementById('login').classList.toggle('hidden', reg);
+  document.getElementById('showRegister').classList.toggle('hidden', reg);
+  document.getElementById('register').classList.toggle('hidden', !reg);
+  document.getElementById('showLogin').classList.toggle('hidden', !reg);
+  document.getElementById('authStatus').textContent = reg ? 'Primeiro acesso: informe o e-mail autorizado, crie uma senha e repita a mesma senha.' : 'Entre com o e-mail autorizado e a senha que você cadastrou.';
+};
+document.getElementById('showRegister').addEventListener('click', () => window.setCompanyAccessMode('register'));
+document.getElementById('showLogin').addEventListener('click', () => window.setCompanyAccessMode('login'));
+document.getElementById('login').addEventListener('click', () => { document.getElementById('authStatus').textContent = 'Verificando acesso… Se esta mensagem não mudar, a página não conseguiu carregar o serviço de autenticação.'; });
+document.getElementById('register').addEventListener('click', () => { document.getElementById('authStatus').textContent = 'Conferindo o e-mail autorizado… Se esta mensagem não mudar, a página não conseguiu carregar o serviço de autenticação.'; });
+window.addEventListener('error', () => { document.getElementById('authStatus').textContent = 'Erro ao carregar a página. Atualize o site e tente novamente.'; });
+</script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
@@ -47,8 +66,6 @@ const $=id=>document.getElementById(id);const params=new URLSearchParams(locatio
 $('company').value=(params.get('empresa')||'').toUpperCase();
 let verifiedCompany=null;
 function status(text){$('authStatus').textContent=text}
-function setMode(mode){const reg=mode==='register';$('authTitle').textContent=reg?'Cadastrar acesso da Empresa':'Entrar na Empresa';$('loginFields').classList.toggle('hidden',reg);$('registerFields').classList.toggle('hidden',!reg);$('login').classList.toggle('hidden',reg);$('showRegister').classList.toggle('hidden',reg);$('register').classList.toggle('hidden',!reg);$('showLogin').classList.toggle('hidden',!reg);status(reg?'Informe o e-mail autorizado e cadastre a senha duas vezes.':'Entre com o e-mail autorizado e a senha já cadastrada.')}
-$('showRegister').addEventListener('click',()=>setMode('register'));$('showLogin').addEventListener('click',()=>setMode('login'));
 function safe(v){return String(v??'—')}
 function addText(container,text){const div=document.createElement('div');div.className='item';div.textContent=text;container.appendChild(div)}
 async function findCompany(code,email){
