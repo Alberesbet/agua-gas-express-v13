@@ -1544,6 +1544,16 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = { masterRegistration = true; mode = "register"; error = ""; masterStatus = ""; masterCompanyEmail = ""; masterCompanyName = ""; masterCompanyPhone = ""; trialDays = "30"; masterPermanent = false }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("🏪 CADASTRAR EMPRESA", fontWeight = FontWeight.ExtraBold) }
                 Spacer(Modifier.height(12.dp))
+                if (masterCompanyCode.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = { masterCompanyDetailsOpen = true; masterCompanyEmailDraft = masterCompanyEmail; masterCompanyMessage = "" }) {
+                        Text(masterCompanyName.ifBlank { "Empresa" }, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
+                    Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
+                    Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
+                }
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("EMPRESAS CADASTRADAS (${masterCompanyDocs.size})", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                     TextButton(onClick = { loadLatestMasterCompany() }) { Text("ATUALIZAR", color = Color.White) }
@@ -1585,15 +1595,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             }
                         }
                     }
-                }
-                if (masterCompanyCode.isNotBlank()) {
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = { masterCompanyDetailsOpen = true; masterCompanyEmailDraft = masterCompanyEmail; masterCompanyMessage = "" }) {
-                        Text(masterCompanyName.ifBlank { "Empresa" }, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
-                    Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
-                    Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
                 }
                 if (masterStatus.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(masterStatus, color = LightBlue, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold) }
                 Spacer(Modifier.height(12.dp))
