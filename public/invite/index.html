@@ -78,6 +78,13 @@ const apk = {
 function addButton(label, href, secondary=false){
   const a=document.createElement('a'); a.href=href; a.textContent=label; a.className='btn'+(secondary?' secondary':''); actions.appendChild(a); return a;
 }
+function appIntent(profile){
+  const packageName = profile === 'cliente'
+    ? 'com.example.aguagasexpress.cliente'
+    : 'com.example.aguagasexpress.entregador';
+  return 'intent://invite?perfil='+encodeURIComponent(profile)+'&empresa='+encodeURIComponent(empresa)
+    +'#Intent;scheme=aguagasexpress;package='+packageName+';end';
+}
 function showStatus(text){status.textContent=text;status.classList.remove('hidden')}
 function digits(value){return value.replace(/\D/g,'')}
 function normalizeDoc(value){return digits(value).slice(0,14)}
@@ -95,13 +102,15 @@ if(perfil==='cliente'){
     showStatus('Cadastro não iniciado: falta o código da empresa no convite.');
   }else{
     msg.textContent='Faça seu cadastro por esta página. Não precisa instalar o APK para se cadastrar. A empresa vinculada a este convite é '+empresa+'.';
+    addButton('ABRIR NO APLICATIVO',appIntent('cliente'),true);
     registration.classList.remove('hidden');
     info.textContent='Depois do cadastro, esta página confirma o envio dos seus dados. Para fazer pedidos pelo aplicativo, você poderá instalar o app posteriormente.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
-  msg.textContent='Para usar as funções de entrega, baixe e instale o aplicativo do Entregador.';
-  addButton('BAIXAR APK DO ENTREGADOR',apk);
+  msg.textContent='Para usar as funções de entrega, abra o aplicativo do Entregador instalado ou baixe-o se ainda não tiver instalado.';
+  addButton('ABRIR NO APLICATIVO',appIntent('entregador'));
+  addButton('BAIXAR APK DO ENTREGADOR',apk,true);
   addButton('Se o download não começar, abrir a página de downloads',releasePage,true);
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
