@@ -3914,52 +3914,6 @@ private fun ApkTransferPanel() {
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF173B62))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("📦 APKs PARA ENVIAR À EMPRESA", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Baixe os APKs mais recentes já compilados. Você também pode escolher arquivos APK guardados no aparelho; eles ficam salvos no aplicativo do desenvolvedor para enviar quando precisar.", color = Color.White, fontSize = 13.sp)
-            Button(
-                onClick = { downloadLatestApk("Cliente") },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("⬇️ BAIXAR APK MAIS RECENTE DO CLIENTE") }
-            Button(
-                onClick = { downloadLatestApk("Entregador") },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("⬇️ BAIXAR APK MAIS RECENTE DO ENTREGADOR") }
-            OutlinedButton(
-                onClick = { chooseClient.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("📥 ESCOLHER APK DO CLIENTE") }
-            Button(
-                onClick = { shareApk("Cliente") },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("👤 ENVIAR APK DO CLIENTE") }
-            OutlinedButton(
-                onClick = { chooseDeliverer.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("📥 ESCOLHER APK DO ENTREGADOR") }
-            Button(
-                onClick = { shareApk("Entregador") },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("🚚 ENVIAR APK DO ENTREGADOR") }
-            if (status.isNotBlank()) {
-                Text(status, color = Color(0xFFB9E5FF), fontSize = 12.sp)
-            }
-            Text("Os arquivos permanecem salvos enquanto os dados do app não forem apagados e o app não for desinstalado.", color = Color(0xFFD8E6F4), fontSize = 11.sp)
-        }
-    }
 }
 
 @Composable
