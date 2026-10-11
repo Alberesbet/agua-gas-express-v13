@@ -1591,6 +1591,35 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 Text(listedEmail, color = LightBlue, fontSize = 12.sp)
                                 Text("Código: ${listedCode} • ${if (listedActive) "Ativa" else "Inativa"}", color = Color.White, fontSize = 11.sp)
                                 Text("Toque para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        android.app.AlertDialog.Builder(this@MainActivity)
+                                            .setTitle("Excluir empresa")
+                                            .setMessage("Deseja realmente excluir ${listedName} (código ${listedCode})? Esta ação remove o cadastro principal e a configuração principal da empresa.")
+                                            .setNegativeButton("CANCELAR", null)
+                                            .setPositiveButton("EXCLUIR") { _, _ ->
+                                                val companyRef = firestore.collection("companies").document(companyDoc.id)
+                                                companyRef.collection("config").document("main").delete()
+                                                    .addOnSuccessListener {
+                                                        companyRef.delete()
+                                                            .addOnSuccessListener {
+                                                                masterStatus = "Empresa ${listedName} excluída."
+                                                                loadLatestMasterCompany()
+                                                            }
+                                                            .addOnFailureListener { e ->
+                                                                masterStatus = "Não foi possível excluir a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                            }
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        masterStatus = "Não foi possível excluir a configuração: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                    }
+                                            }
+                                            .show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E))
+                                ) { Text("EXCLUIR EMPRESA") }
                             }
                         }
                     }
