@@ -82,8 +82,11 @@ function appIntent(profile){
   const packageName = profile === 'cliente'
     ? 'com.example.aguagasexpress.cliente'
     : 'com.example.aguagasexpress.entregador';
-  return 'intent://invite?perfil='+encodeURIComponent(profile)+'&empresa='+encodeURIComponent(empresa)
-    +'#Intent;scheme=aguagasexpress;package='+packageName+';end';
+  const query = '?perfil='+encodeURIComponent(profile)+'&empresa='+encodeURIComponent(empresa);
+  const fallback = 'https://agua-e-gas-express.web.app/invite'+query;
+  return 'intent://invite'+query
+    +'#Intent;scheme=aguagasexpress;package='+packageName
+    +';S.browser_fallback_url='+encodeURIComponent(fallback)+';end';
 }
 function showStatus(text){status.textContent=text;status.classList.remove('hidden')}
 function digits(value){return value.replace(/\D/g,'')}
