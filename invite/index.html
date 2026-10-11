@@ -106,16 +106,16 @@ if(perfil==='cliente'){
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
   title.textContent='Acesso da Empresa';
-  msg.textContent='Baixe o aplicativo da Empresa ou abra o painel no notebook.';
+  msg.textContent='Para o primeiro acesso, cadastre a empresa com o e-mail autorizado e crie uma senha. Se já tem cadastro, entre com e-mail e senha.';
   if(apk){
     addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
   }else{
     const note=document.createElement('p');
     note.className='muted';
-    note.textContent='O APK exclusivo da Empresa ainda não está publicado. Não instale o APK do Desenvolvedor por este convite.';
+    note.textContent='O APK exclusivo da Empresa ainda não está publicado. Não instale o APK do Desenvolvedor por este convite. Use o acesso pela web até disponibilizarmos o APK correto.';
     actions.appendChild(note);
   }
-  addButton('CADASTRAR / ENTRAR NA EMPRESA PELA WEB','empresa/?empresa='+encodeURIComponent(empresa),true);
+  addButton('CADASTRAR EMPRESA / ENTRAR COM E-MAIL E SENHA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
