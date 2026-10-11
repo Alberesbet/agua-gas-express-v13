@@ -63,6 +63,14 @@ jobs:
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Publicar tela real de acesso da Empresa dentro do link de convite
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/invite/empresa
+          cp invite/empresa/index.html public/invite/empresa/index.html
+          test -s public/invite/empresa/index.html
+
       - name: Preparar site
         uses: actions/upload-pages-artifact@v3
         with:
