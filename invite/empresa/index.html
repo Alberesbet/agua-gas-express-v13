@@ -46,7 +46,9 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);
 $('company').value=(params.get('empresa')||'').toUpperCase();
 let verifiedCompany=null;
-function status(text){$('authStatus').textContent=text}\nfunction setMode(mode){const reg=mode==='register';$('authTitle').textContent=reg?'Cadastrar acesso da Empresa':'Entrar na Empresa';$('loginFields').classList.toggle('hidden',reg);$('registerFields').classList.toggle('hidden',!reg);$('login').classList.toggle('hidden',reg);$('showRegister').classList.toggle('hidden',reg);$('register').classList.toggle('hidden',!reg);$('showLogin').classList.toggle('hidden',!reg);status(reg?'Informe o e-mail autorizado e cadastre a senha duas vezes.':'Entre com o e-mail autorizado e a senha já cadastrada.')}\n$('showRegister').addEventListener('click',()=>setMode('register'));$('showLogin').addEventListener('click',()=>setMode('login'));
+function status(text){$('authStatus').textContent=text}
+function setMode(mode){const reg=mode==='register';$('authTitle').textContent=reg?'Cadastrar acesso da Empresa':'Entrar na Empresa';$('loginFields').classList.toggle('hidden',reg);$('registerFields').classList.toggle('hidden',!reg);$('login').classList.toggle('hidden',reg);$('showRegister').classList.toggle('hidden',reg);$('register').classList.toggle('hidden',!reg);$('showLogin').classList.toggle('hidden',!reg);status(reg?'Informe o e-mail autorizado e cadastre a senha duas vezes.':'Entre com o e-mail autorizado e a senha já cadastrada.')}
+$('showRegister').addEventListener('click',()=>setMode('register'));$('showLogin').addEventListener('click',()=>setMode('login'));
 function safe(v){return String(v??'—')}
 function addText(container,text){const div=document.createElement('div');div.className='item';div.textContent=text;container.appendChild(div)}
 async function findCompany(code,email){
