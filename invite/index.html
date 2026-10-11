@@ -115,7 +115,7 @@ if(perfil==='cliente'){
     note.textContent='O APK exclusivo da Empresa ainda não está publicado. Não instale o APK do Desenvolvedor por este convite.';
     actions.appendChild(note);
   }
-  addButton('CADASTRAR / ENTRAR NA EMPRESA PELA WEB','/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  addButton('CADASTRAR / ENTRAR NA EMPRESA PELA WEB','empresa/?empresa='+encodeURIComponent(empresa),true);
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
