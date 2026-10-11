@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - fix/apks-cliente-entregador-notebook
+      - fix/preserve-working-firebase-invite
   workflow_dispatch:
 
 permissions:
