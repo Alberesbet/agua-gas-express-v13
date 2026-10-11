@@ -1186,10 +1186,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             if (masterLoggedIn) loadLatestMasterCompany()
         }
 
-        if (masterLoggedIn) {
-            ApkTransferPanel()
-            Spacer(Modifier.height(14.dp))
-        }
+        // O envio manual de APK foi removido: a distribuição deve ser feita por links.
 
         if (mode == "master") {
             if (!masterLoggedIn) {
@@ -2568,9 +2565,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { showShareLinksDialog = true }) {
-                        Text("📦 Enviar APKs", color = LightBlue)
-                    }
+
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
 
