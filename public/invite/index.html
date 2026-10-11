@@ -88,7 +88,11 @@ async function customerDocId(phone){
   return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('').slice(0,32);
 }
 
-if(perfil==='cliente'){
+if(perfil==='empresa'){
+  // O link único gerado pelo Desenvolvedor continua sendo /invite/?perfil=empresa&empresa=CODIGO.
+  // Publicamos o formulário real de acesso da Empresa neste caminho e preservamos o código recebido.
+  location.replace('https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa));
+}else if(perfil==='cliente'){
   title.textContent='Cadastro do Cliente';
   if(!empresa){
     msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
