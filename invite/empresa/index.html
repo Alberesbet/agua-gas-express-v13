@@ -21,8 +21,9 @@ button{width:100%;padding:14px;border:0;border-radius:9px;background:#087443;col
 <p class="small">Primeiro acesso: crie sua senha com o e-mail autorizado pela empresa. Nos próximos acessos, entre com o mesmo e-mail e senha.</p>
 <label for="company">Código da empresa</label><input id="company" autocomplete="organization" maxlength="20" placeholder="Ex.: 570476">
 <label for="email">E-mail autorizado</label><input id="email" type="email" autocomplete="email" required>
-<label for="password">Senha (mínimo 6 caracteres)</label><input id="password" type="password" autocomplete="current-password" minlength="6" required>
-<button id="login">ENTRAR NO PAINEL</button><button class="secondary" id="register">CRIAR SENHA — PRIMEIRO ACESSO</button>
+<div id="loginFields"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" minlength="6"></div>
+<div id="registerFields" class="hidden"><label for="newPassword">Cadastrar senha (mínimo 6 caracteres)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="6"><label for="repeatPassword">Repetir senha</label><input id="repeatPassword" type="password" autocomplete="new-password" minlength="6"></div>
+<button id="login">ENTRAR NO PAINEL</button><button class="secondary" id="showRegister">PRIMEIRO ACESSO — CADASTRAR SENHA</button><button id="register" class="hidden">CONFIRMAR CADASTRO DA SENHA</button><button id="showLogin" class="secondary hidden">VOLTAR PARA ENTRAR</button>
 <p id="authStatus" class="status" role="status">Informe o código da empresa e o e-mail autorizado.</p>
 </section>
 <section id="dashboard" class="hidden">
@@ -45,7 +46,7 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);
 $('company').value=(params.get('empresa')||'').toUpperCase();
 let verifiedCompany=null;
-function status(text){$('authStatus').textContent=text}
+function status(text){$('authStatus').textContent=text}\nfunction setMode(mode){const reg=mode==='register';$('authTitle').textContent=reg?'Cadastrar acesso da Empresa':'Entrar na Empresa';$('loginFields').classList.toggle('hidden',reg);$('registerFields').classList.toggle('hidden',!reg);$('login').classList.toggle('hidden',reg);$('showRegister').classList.toggle('hidden',reg);$('register').classList.toggle('hidden',!reg);$('showLogin').classList.toggle('hidden',!reg);status(reg?'Informe o e-mail autorizado e cadastre a senha duas vezes.':'Entre com o e-mail autorizado e a senha já cadastrada.')}\n$('showRegister').addEventListener('click',()=>setMode('register'));$('showLogin').addEventListener('click',()=>setMode('login'));
 function safe(v){return String(v??'—')}
 function addText(container,text){const div=document.createElement('div');div.className='item';div.textContent=text;container.appendChild(div)}
 async function findCompany(code,email){
@@ -73,7 +74,7 @@ async function loadData(code){
  catch(e){$('orderCount').textContent='—';$('orders').textContent='Não foi possível ler os pedidos: '+(e.code||e.message)}
 }
 $('login').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value;if(!email||!password)throw new Error('Informe e-mail e senha.');status('Verificando acesso…');const c=await signInWithEmailAndPassword(auth,email,password);await verifyAndOpen(c.user)}catch(e){status('Não foi possível entrar: '+(e.code==='auth/invalid-credential'?'e-mail ou senha incorretos.':e.message||e.code))}});
-$('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value,code=$('company').value.trim().toUpperCase();if(!code||!email||password.length<6)throw new Error('Informe código, e-mail e senha com pelo menos 6 caracteres.');status('Conferindo o e-mail autorizado…');const found=await findCompany(code,email);if(!found)throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. Nenhuma conta foi criada.');await createUserWithEmailAndPassword(auth,email,password);status('Senha criada. Abrindo painel…');await verifyAndOpen(auth.currentUser)}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/email-already-in-use'?'esse e-mail já tem conta; use ENTRAR NO PAINEL.':e.message||e.code))}});
+$('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('newPassword').value,repeat=$('repeatPassword').value,code=$('company').value.trim().toUpperCase();if(!code||!email)throw new Error('Informe o código da empresa e o e-mail autorizado.');if(password.length<6)throw new Error('A senha precisa ter pelo menos 6 caracteres.');if(password!==repeat)throw new Error('As senhas não conferem. Digite novamente.');status('Conferindo o e-mail autorizado…');const found=await findCompany(code,email);if(!found)throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. Nenhuma conta foi criada.');await createUserWithEmailAndPassword(auth,email,password);status('Senha cadastrada. Abrindo painel…');await verifyAndOpen(auth.currentUser)}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/email-already-in-use'?'esse e-mail já tem conta; volte para entrar com a senha.':e.message||e.code))}});
 $('refresh').addEventListener('click',()=>loadData($('company').value.trim().toUpperCase()).catch(e=>$('companyStatus').textContent='Erro ao atualizar: '+(e.message||e.code)));
 $('logout').addEventListener('click',async()=>{await signOut(auth);$('dashboard').classList.add('hidden');$('authCard').classList.remove('hidden');status('Você saiu da conta.')});
 onAuthStateChanged(auth,user=>{if(!user)return;/* A abertura exige validação explícita do código e e-mail neste dispositivo. */});
