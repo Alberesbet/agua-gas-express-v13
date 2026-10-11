@@ -149,7 +149,9 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     msg.textContent='Cadastro concluído.';
   }catch(error){
     console.error(error);
-    showStatus('Não foi possível salvar o cadastro agora. Verifique a conexão e tente novamente. Se continuar, a configuração de autenticação/permissões do Firebase precisa ser conferida.');
+    const errorCode = error?.code || 'erro-desconhecido';
+    const errorMessage = String(error?.message || 'Sem detalhes adicionais').slice(0, 240);
+    showStatus('Falha ao salvar (' + errorCode + '): ' + errorMessage + '. Não altere as regras do Firestore para liberar acesso público.');
     button.disabled=false;button.textContent='TENTAR ENVIAR CADASTRO NOVAMENTE';
   }
 });
