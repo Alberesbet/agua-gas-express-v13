@@ -5,6 +5,10 @@ on:
     branches:
       - master
       - fix/apks-cliente-entregador-notebook
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'invite/**'
+      - 'public/**'
   workflow_dispatch:
 
 permissions:
