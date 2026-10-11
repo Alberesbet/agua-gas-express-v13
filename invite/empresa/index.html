@@ -70,8 +70,19 @@ function status(text){$('authStatus').textContent=text}
 function safe(v){return String(v??'—')}
 function addText(container,text){const div=document.createElement('div');div.className='item';div.textContent=text;container.appendChild(div)}
 async function findCompany(code,email){
- const snap=await getDocs(query(collection(db,'companies'),where('companyCode','==',code),limit(10)));
- return snap.docs.find(d=>{const x=d.data();return String(x.email||x.authorizedEmail||'').trim().toLowerCase()===email.toLowerCase()});
+ const normalizedCode=String(code||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const normalizedEmail=String(email||'').trim().toLowerCase();
+ if(!normalizedCode||!normalizedEmail) return null;
+ // Aceita o código salvo no campo companyCode ou como ID do documento,
+ // e confere os nomes de campo de e-mail usados pelas versões do aplicativo.
+ const snap=await getDocs(query(collection(db,'companies'),limit(500)));
+ return snap.docs.find(d=>{
+   const x=d.data();
+   const savedCode=String(x.companyCode||x.code||x.codigoEmpresa||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+   const savedEmails=[x.email,x.authorizedEmail,x.companyEmail,x.adminEmail].map(v=>String(v||'').trim().toLowerCase()).filter(Boolean);
+   return (savedCode===normalizedCode || String(d.id).trim().toUpperCase().replace(/[^A-Z0-9]/g,'')===normalizedCode)
+     && savedEmails.includes(normalizedEmail);
+ })||null;
 }
 async function verifyAndOpen(user){
  const code=$('company').value.trim().toUpperCase(),email=(user.email||$('email').value).trim().toLowerCase();
