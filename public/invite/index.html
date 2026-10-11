@@ -84,8 +84,8 @@ function normalizeDoc(value){return digits(value).slice(0,14)}
 async function customerDocId(phone){
   const data=new TextEncoder().encode(digits(phone));
   const digest=await crypto.subtle.digest('SHA-256',data);
-  let binary=''; new Uint8Array(digest).forEach(b=>binary+=String.fromCharCode(b));
-  return btoa(binary).slice(0,32);
+  // Use hexadecimal only: Base64 can contain '/', which breaks Firestore document paths.
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('').slice(0,32);
 }
 
 if(perfil==='cliente'){
@@ -149,7 +149,9 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     msg.textContent='Cadastro concluído.';
   }catch(error){
     console.error(error);
-    showStatus('Não foi possível salvar o cadastro agora. Verifique a conexão e tente novamente. Se continuar, a configuração de autenticação/permissões do Firebase precisa ser conferida.');
+    const errorCode = error?.code || 'erro-desconhecido';
+    const errorMessage = String(error?.message || 'Sem detalhes adicionais').slice(0, 240);
+    showStatus('Falha ao salvar (' + errorCode + '): ' + errorMessage + '. Não altere as regras do Firestore para liberar acesso público.');
     button.disabled=false;button.textContent='TENTAR ENVIAR CADASTRO NOVAMENTE';
   }
 });
