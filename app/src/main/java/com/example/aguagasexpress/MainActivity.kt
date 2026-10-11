@@ -78,6 +78,7 @@ private val Ink = Color(0xFF18253A)
 private val Green = Color(0xFF16834A)
 
 // Link HTTPS para a página pública de convite, também acessível sem instalar o APK.
+// Base única dos três convites (Empresa, Cliente e Entregador); a página resolve os destinos por perfil.
 private const val WEB_INVITE_BASE_URL = "https://alberesbet.github.io/agua-gas-express-v13/invite/"
 // Um único link por convite. O Android App Link abre o aplicativo quando ele já está instalado;
 // caso contrário, o mesmo HTTPS cai na página Web de entrada/download.
