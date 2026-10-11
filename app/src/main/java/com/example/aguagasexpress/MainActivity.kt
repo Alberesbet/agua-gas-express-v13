@@ -961,6 +961,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterCompanyPhone by remember { mutableStateOf("") }
     var masterCompanyDetailsOpen by remember { mutableStateOf(false) }
     var masterCompanyId by remember { mutableStateOf("") }
+    var masterCompanyDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
     var masterLicensePermanent by remember { mutableStateOf(false) }
     var masterLicenseExpiresAt by remember { mutableStateOf(0L) }
     var masterLicenseStatus by remember { mutableStateOf("") }
@@ -995,9 +996,19 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         ensureFirebase {
             val uid = auth.currentUser?.uid.orEmpty()
             if (uid.isBlank()) return@ensureFirebase
-            firestore.collection("companies").whereEqualTo("ownerUid", uid).get()
+            // O painel do Desenvolvedor lista todas as empresas, não apenas as ligadas ao UID anônimo atual.
+            firestore.collection("companies").get()
                 .addOnSuccessListener { snap ->
-                    val doc = snap.documents.maxByOrNull { it.getLong("createdAt") ?: 0L } ?: return@addOnSuccessListener
+                    masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                    if (masterCompanyDocs.isEmpty()) {
+                        masterCompanyId = ""
+                        masterCompanyCode = ""
+                        masterCompanyName = ""
+                        masterCompanyEmail = ""
+                        masterCompanyPhone = ""
+                        return@addOnSuccessListener
+                    }
+                    val doc = masterCompanyDocs.firstOrNull() ?: return@addOnSuccessListener
                     masterCompanyId = doc.id
                     masterCompanyCode = doc.getString("companyCode") ?: ""
                     masterCompanyName = doc.getString("name") ?: "Empresa"
@@ -1264,6 +1275,78 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
                     Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
                     Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("EMPRESAS CADASTRADAS (${masterCompanyDocs.size})", color = LightBlue, fontWeight = FontWeight.ExtraBold)
+                    TextButton(onClick = { loadLatestMasterCompany() }) { Text("ATUALIZAR", color = Color.White) }
+                }
+                if (masterCompanyDocs.isEmpty()) {
+                    Text("Nenhuma empresa encontrada para esta conta. Toque em Atualizar para consultar novamente.", color = Color.White, fontSize = 12.sp)
+                } else {
+                    masterCompanyDocs.forEach { companyDoc ->
+                        val listedName = companyDoc.getString("name") ?: "Empresa"
+                        val listedEmail = companyDoc.getString("email") ?: companyDoc.getString("authorizedEmail") ?: ""
+                        val listedCode = companyDoc.getString("companyCode") ?: ""
+                        val listedActive = companyDoc.getBoolean("active") != false
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF173B62)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                                masterCompanyId = companyDoc.id
+                                masterCompanyCode = listedCode
+                                masterCompanyName = listedName
+                                masterCompanyEmail = listedEmail
+                                masterCompanyPhone = companyDoc.getString("companyPhone") ?: ""
+                                masterLicensePermanent = companyDoc.getBoolean("licensePermanent") ?: false
+                                masterLicenseExpiresAt = companyDoc.getLong("licenseExpiresAt") ?: 0L
+                                masterLicenseStatus = companyDoc.getString("licenseStatus") ?: if (masterLicensePermanent) "PERMANENT" else "TRIAL"
+                                masterLicenseDays = (companyDoc.getLong("licenseDays") ?: 0L).toInt()
+                                masterCompanyActivated = companyDoc.getBoolean("activated") ?: false
+                                masterCompanyActive = listedActive
+                                masterCompanyCreatedAt = companyDoc.getLong("createdAt") ?: 0L
+                                masterCompanyVersion = companyDoc.getString("appVersion") ?: "11.0-test"
+                                masterCompanyDetailsOpen = true
+                                masterCompanyEmailDraft = listedEmail
+                                masterCompanyMessage = ""
+                            }
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(listedName, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(listedEmail, color = LightBlue, fontSize = 12.sp)
+                                Text("Código: ${listedCode} • ${if (listedActive) "Ativa" else "Inativa"}", color = Color.White, fontSize = 11.sp)
+                                Text("Toque para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        android.app.AlertDialog.Builder(context)
+                                            .setTitle("Excluir empresa")
+                                            .setMessage("Deseja realmente excluir ${listedName} (código ${listedCode})? Esta ação remove o cadastro principal e a configuração principal da empresa.")
+                                            .setNegativeButton("CANCELAR", null)
+                                            .setPositiveButton("EXCLUIR") { _, _ ->
+                                                val companyRef = firestore.collection("companies").document(companyDoc.id)
+                                                companyRef.collection("config").document("main").delete()
+                                                    .addOnSuccessListener {
+                                                        companyRef.delete()
+                                                            .addOnSuccessListener {
+                                                                masterStatus = "Empresa ${listedName} excluída."
+                                                                loadLatestMasterCompany()
+                                                            }
+                                                            .addOnFailureListener { e ->
+                                                                masterStatus = "Não foi possível excluir a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                            }
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        masterStatus = "Não foi possível excluir a configuração: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                    }
+                                            }
+                                            .show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E))
+                                ) { Text("EXCLUIR EMPRESA") }
+                            }
+                        }
+                    }
                 }
                 if (masterStatus.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(masterStatus, color = LightBlue, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold) }
                 Spacer(Modifier.height(12.dp))
