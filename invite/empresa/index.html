@@ -23,7 +23,7 @@ button{width:100%;padding:14px;border:0;border-radius:9px;background:#087443;col
 <label for="email">E-mail autorizado</label><input id="email" type="email" autocomplete="email" required>
 <div id="loginFields"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" minlength="6"></div>
 <div id="registerFields" class="hidden"><label for="newPassword">Cadastrar senha (mínimo 6 caracteres)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="6"><label for="repeatPassword">Repetir senha</label><input id="repeatPassword" type="password" autocomplete="new-password" minlength="6"></div>
-<button id="login">ENTRAR NO PAINEL</button><button class="secondary" id="showRegister">PRIMEIRO ACESSO — CADASTRAR SENHA</button><button id="register" class="hidden">CONFIRMAR CADASTRO DA SENHA</button><button id="showLogin" class="secondary hidden">VOLTAR PARA ENTRAR</button>
+<button id="login">ENTRAR NO PAINEL</button><button class="secondary" id="forgotPassword">ESQUECI A SENHA</button><button class="secondary" id="showRegister">PRIMEIRO ACESSO — CADASTRAR SENHA</button><button id="register" class="hidden">CONFIRMAR CADASTRO DA SENHA</button><button id="showLogin" class="secondary hidden">VOLTAR PARA ENTRAR</button>
 <p id="authStatus" class="status" role="status">Informe o código da empresa e o e-mail autorizado.</p>
 </section>
 <section id="dashboard" class="hidden">
@@ -46,6 +46,7 @@ window.setCompanyAccessMode = function(mode) {
   document.getElementById('registerFields').classList.toggle('hidden', !reg);
   document.getElementById('login').classList.toggle('hidden', reg);
   document.getElementById('showRegister').classList.toggle('hidden', reg);
+  document.getElementById('forgotPassword').classList.toggle('hidden', reg);
   document.getElementById('register').classList.toggle('hidden', !reg);
   document.getElementById('showLogin').classList.toggle('hidden', !reg);
   document.getElementById('authStatus').textContent = reg ? 'Primeiro acesso: informe o e-mail autorizado, crie uma senha e repita a mesma senha.' : 'Entre com o e-mail autorizado e a senha que você cadastrou.';
@@ -58,7 +59,7 @@ window.addEventListener('error', () => { document.getElementById('authStatus').t
 </script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {getFirestore,collection,query,where,getDocs,limit} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const firebaseConfig={apiKey:'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',authDomain:'agua-e-gas-express.firebaseapp.com',projectId:'agua-e-gas-express',storageBucket:'agua-e-gas-express.firebasestorage.app',messagingSenderId:'1071136912572'};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
@@ -92,7 +93,7 @@ async function loadData(code){
  try{const os=await getDocs(query(collection(db,'orders'),where('companyCode','==',code),limit(300)));$('orderCount').textContent=os.size;$('orders').replaceChildren();if(!os.size)addText($('orders'),'Nenhum pedido encontrado na coleção “orders” para esta empresa.');os.forEach(d=>{const x=d.data();addText($('orders'),'Pedido '+d.id+' • '+safe(x.status||x.situacao)+' • '+safe(x.customerName||x.nomeCliente||x.name)+' • '+safe(x.total||x.valor))})}
  catch(e){$('orderCount').textContent='—';$('orders').textContent='Não foi possível ler os pedidos: '+(e.code||e.message)}
 }
-$('login').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value;if(!email||!password)throw new Error('Informe e-mail e senha.');status('Verificando acesso…');const c=await signInWithEmailAndPassword(auth,email,password);await verifyAndOpen(c.user)}catch(e){status('Não foi possível entrar: '+(e.code==='auth/invalid-credential'?'e-mail ou senha incorretos.':e.message||e.code))}});
+ $('forgotPassword').addEventListener('click',async()=>{try{const email=$('email').value.trim();if(!email)throw new Error('Digite primeiro o e-mail autorizado para receber o link de redefinição.');status('Enviando instruções para redefinir a senha…');auth.languageCode='pt-BR';await sendPasswordResetEmail(auth,email);status('Se este e-mail estiver cadastrado, você receberá uma mensagem para redefinir a senha. Confira a caixa de entrada e o spam. Depois, volte aqui e entre com a nova senha.')}catch(e){status('Não foi possível solicitar a redefinição: '+(e.code==='auth/invalid-email'?'confira o formato do e-mail.':e.message||e.code))}});\n$('login').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value;if(!email||!password)throw new Error('Informe e-mail e senha.');status('Verificando acesso…');const c=await signInWithEmailAndPassword(auth,email,password);await verifyAndOpen(c.user)}catch(e){status('Não foi possível entrar: '+(e.code==='auth/invalid-credential'?'e-mail ou senha incorretos.':e.message||e.code))}});
 $('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('newPassword').value,repeat=$('repeatPassword').value,code=$('company').value.trim().toUpperCase();if(!code||!email)throw new Error('Informe o código da empresa e o e-mail autorizado.');if(password.length<6)throw new Error('A senha precisa ter pelo menos 6 caracteres.');if(password!==repeat)throw new Error('As senhas não conferem. Digite novamente.');status('Conferindo o e-mail autorizado…');const found=await findCompany(code,email);if(!found)throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. Nenhuma conta foi criada.');await createUserWithEmailAndPassword(auth,email,password);status('Senha cadastrada. Abrindo painel…');await verifyAndOpen(auth.currentUser)}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/email-already-in-use'?'esse e-mail já tem conta; volte para entrar com a senha.':e.message||e.code))}});
 $('refresh').addEventListener('click',()=>loadData($('company').value.trim().toUpperCase()).catch(e=>$('companyStatus').textContent='Erro ao atualizar: '+(e.message||e.code)));
 $('logout').addEventListener('click',async()=>{await signOut(auth);$('dashboard').classList.add('hidden');$('authCard').classList.remove('hidden');status('Você saiu da conta.')});
