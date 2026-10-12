@@ -67,13 +67,13 @@ const info = document.getElementById('info');
 const status = document.getElementById('status');
 const registration = document.getElementById('registration');
 const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build';
-// A página de convite não gera nem publica APKs. Ela encaminha ao fluxo web ou à página de versões já existentes.
-const apk = {
-  empresa: '',
-  cliente: releasePage,
-  entregador: releasePage,
-  proprietario: releasePage
-}[perfil] || '';
+const downloadUrls = {
+  empresa: releasePage,
+  cliente: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Cliente.apk',
+  entregador: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Entregador.apk',
+  proprietario: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Desenvolvedor.apk'
+};
+const apk = downloadUrls[perfil] || '';
 
 function addButton(label, href, secondary=false){
   const a=document.createElement('a'); a.href=href; a.textContent=label; a.className='btn'+(secondary?' secondary':''); actions.appendChild(a); return a;
@@ -121,37 +121,29 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Cadastro do Cliente';
-  if(!empresa){
-    msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
-    showStatus('Não foi possível identificar a empresa neste convite.');
-  }else{
-    msg.textContent='Convite da empresa '+empresa+'. Preencha o cadastro abaixo sem precisar instalar o aplicativo primeiro. Depois você poderá baixar o app para fazer pedidos.';
-    registration.classList.remove('hidden');
-    addButton('BAIXAR APLICATIVO DO CLIENTE',apk,true);
-    info.textContent='O cadastro será enviado para a empresa pelo link. Depois, instale o aplicativo para fazer pedidos.';
-  }
+  title.textContent='Aplicativo do Cliente';
+  msg.textContent=empresa
+    ? 'Convite da empresa '+empresa+'. Toque no botão abaixo para baixar o aplicativo. Depois, abra o app, faça seu cadastro e faça seu pedido.'
+    : 'Toque no botão abaixo para baixar o aplicativo do Cliente. Para vincular seu cadastro a uma empresa, use o convite enviado por ela.';
+  addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
+  info.textContent=empresa ? 'Código da empresa: '+empresa : '';
 }else if(perfil==='entregador'){
-  title.textContent='Acesso do Entregador';
-  msg.textContent='Convite da empresa '+(empresa||'não informada')+'. Baixe o aplicativo do Entregador e abra-o para continuar.';
-  addButton('BAIXAR APK DO ENTREGADOR',apk);
-  addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=entregador&empresa='+encodeURIComponent(empresa),true);
-  addButton('Se o download não começar, abrir a página de downloads',releasePage,true);
+  title.textContent='Aplicativo do Entregador';
+  msg.textContent='Toque no botão abaixo para baixar o aplicativo do Entregador. Depois, abra o app e entre usando o convite da empresa.';
+  addButton('BAIXAR APLICATIVO DO ENTREGADOR',apk);
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
-  title.textContent='Acesso da Empresa';
-  msg.textContent='Link da Empresa: escolha como deseja entrar. No notebook, use a opção pela Web. No celular, você pode baixar o aplicativo Android.';
-  addButton('ENTRAR PELA WEB — NOTEBOOK OU CELULAR','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
-  if(apk) addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
-  info.textContent='Código da empresa: '+(empresa||'não informado')+'. A opção Web abre o painel no navegador e não exige instalar o aplicativo. A opção Android baixa o APK da Empresa.';
+  title.textContent='Aplicativo da Empresa';
+  msg.textContent='Toque no botão abaixo para abrir a página de versões do aplicativo da Empresa. Use o código do convite para acessar o painel.';
+  addButton('ACESSAR APLICATIVO DA EMPRESA', 'https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa));
+  info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='proprietario'){
-  title.textContent='Acesso do Desenvolvedor';
-  msg.textContent='Baixe o aplicativo do Desenvolvedor.';
+  title.textContent='Aplicativo do Desenvolvedor';
+  msg.textContent='Baixe o aplicativo do Desenvolvedor para cadastrar empresas e enviar o convite de acesso.';
   addButton('BAIXAR APLICATIVO DO DESENVOLVEDOR',apk);
-  addButton('Página alternativa de downloads',releasePage,true);
 }else{
   title.textContent='Convite inválido';
-  msg.textContent='O link não contém um perfil válido. Solicite um novo link à empresa.';
+  msg.textContent='Este link não identifica o perfil. Solicite um novo convite.';
 }
 
 document.getElementById('customerForm').addEventListener('submit',async(event)=>{
