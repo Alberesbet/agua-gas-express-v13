@@ -1,4 +1,4 @@
-name: Build three APKs
+name: Build APK profiles
 
 on:
   push:
@@ -41,24 +41,26 @@ jobs:
           chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
           "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
 
-      - name: Build developer, client and deliverer APKs
+      - name: Build developer, company, client and deliverer APKs
         run: |
           "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
 
-      - name: Verify all three APKs exist
+      - name: Verify all four APKs exist
         shell: bash
         run: |
           set -euo pipefail
           test -s app/build/outputs/apk/desenvolvedor/debug/*.apk
+          test -s app/build/outputs/apk/empresa/debug/*.apk
           test -s app/build/outputs/apk/cliente/debug/*.apk
           test -s app/build/outputs/apk/entregador/debug/*.apk
 
-      - name: Upload three APKs
+      - name: Upload four APKs
         uses: actions/upload-artifact@v4
         with:
-          name: AguaGasExpress-tres-APKs
+          name: AguaGasExpress-APKs-atualizados
           path: |
             app/build/outputs/apk/desenvolvedor/debug/*.apk
+            app/build/outputs/apk/empresa/debug/*.apk
             app/build/outputs/apk/cliente/debug/*.apk
             app/build/outputs/apk/entregador/debug/*.apk
           if-no-files-found: error
