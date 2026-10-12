@@ -3894,7 +3894,17 @@ private fun InputField(label: String, value: String, numeric: Boolean = false, o
 private fun ErrorText(value: String) {
     if (value.isNotBlank()) {
         Spacer(Modifier.height(8.dp))
-        Text(value, color = Color(0xFFFFB4A8), textAlign = TextAlign.Center)
+        // Avisos sempre legíveis mesmo sobre os fundos vermelhos do aplicativo.
+        Text(
+            value,
+            color = Color(0xFF111111),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        )
     }
 }
 
