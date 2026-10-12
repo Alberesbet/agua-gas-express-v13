@@ -279,6 +279,7 @@ class MainActivity : ComponentActivity() {
         if (inviteProfile !in setOf("cliente", "entregador", "empresa", "proprietario")) return false
 
         val inviteCompanyCode = data.getQueryParameter("empresa")?.let(::normalizeCompanyCode).orEmpty()
+        val webCustomerId = data.getQueryParameter("clienteId")?.filter { it.isLetterOrDigit() }?.take(32).orEmpty()
         val invitePlatform = data.getQueryParameter("plataforma")?.lowercase(Locale.ROOT).orEmpty()
         val editor = prefs.edit().putString("invite_profile", inviteProfile)
 
@@ -288,6 +289,7 @@ class MainActivity : ComponentActivity() {
             editor.remove("company_id").remove("company_role").remove("company_authenticated")
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
+        if (inviteProfile == "cliente" && webCustomerId.isNotBlank()) editor.putString("web_customer_doc_id", webCustomerId)
         if (invitePlatform == "android" || invitePlatform == "notebook") editor.putString("invite_platform", invitePlatform)
         editor.apply()
         return true
@@ -1710,6 +1712,32 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
+    LaunchedEffect(Unit) {
+        val webCustomerId = prefs.getString("web_customer_doc_id", "").orEmpty()
+        if (webCustomerId.isNotBlank()) {
+            FirebaseFirestore.getInstance().collection("customers").document(webCustomerId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists() && doc.getString("inviteProfile") == "cliente") {
+                        clientName = doc.getString("name").orEmpty()
+                        clientPhone = doc.getString("phone").orEmpty()
+                        clientDocType = doc.getString("documentType")?.takeIf { it.isNotBlank() } ?: "CPF"
+                        clientDocNumber = doc.getString("documentNumber").orEmpty()
+                        clientCep = doc.getString("cep").orEmpty()
+                        clientAddress = doc.getString("street")?.takeIf { it.isNotBlank() } ?: doc.getString("address").orEmpty()
+                        clientHouseNumber = doc.getString("houseNumber").orEmpty()
+                        clientProfileSaved = clientName.isNotBlank() && clientPhone.isNotBlank() && clientAddress.isNotBlank()
+                        if (clientProfileSaved) {
+                            prefs.edit().putString("client_name", clientName).putString("client_phone", clientPhone)
+                                .putString("client_doc_type", clientDocType).putString("client_doc_number", clientDocNumber)
+                                .putString("client_cep", clientCep).putString("client_street_address", clientAddress)
+                                .putString("client_house_number", clientHouseNumber)
+                                .putString("client_address", listOf(clientAddress, clientHouseNumber).filter { it.isNotBlank() }.joinToString(", "))
+                                .putBoolean("client_profile_saved", true).remove("web_customer_doc_id").apply()
+                        }
+                    }
+                }
+        }
+    }
     var clientLastOrderId by remember { mutableStateOf<Long?>(null) }
     var orderSubmitting by remember { mutableStateOf(false) }
 
