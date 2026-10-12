@@ -291,9 +291,13 @@ class MainActivity : ComponentActivity() {
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
         if (inviteProfile == "cliente") {
-            editor.putBoolean("client_profile_saved", false)
-                .remove("client_name").remove("client_phone").remove("client_address")
-                .remove("client_street_address").remove("client_house_number")
+            // Preservece o cadastro local já concluído. O link deve vincular a empresa,
+            // não apagar os dados e forçar o cliente a se cadastrar a cada abertura.
+            if (!prefs.getBoolean("client_profile_saved", false)) {
+                editor.putBoolean("client_profile_saved", false)
+                    .remove("client_name").remove("client_phone").remove("client_address")
+                    .remove("client_street_address").remove("client_house_number")
+            }
             if (webCustomerId.isNotBlank()) editor.putString("web_customer_doc_id", webCustomerId)
         }
         if (invitePlatform == "android" || invitePlatform == "notebook") editor.putString("invite_platform", invitePlatform)
