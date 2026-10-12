@@ -44,7 +44,7 @@ a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
@@ -144,10 +144,18 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     const credential=await signInAnonymously(auth);
     const uid=credential.user.uid;
     const address=street+', '+number;
+    // Resolve o código para o ID real da empresa antes de gravar o cadastro.
+    // A empresa consulta clientes/pedidos pelo companyId; salvar só companyCode deixa o cliente órfão no painel.
+    const companySnapshot = await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(1)));
+    const companyDoc = companySnapshot.docs[0];
+    if(!companyDoc || companyDoc.data()?.active === false){
+      throw new Error('Empresa não encontrada ou desativada. Peça à empresa um novo convite.');
+    }
+    const companyId = companyDoc.id;
     const id=await customerDocId(phone);
     await setDoc(doc(db,'customers',id),{
       uid,name,phone,documentType:docType,documentNumber,cep,address,active:true,
-      companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
+      companyId,companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
       updatedAt:serverTimestamp()
     },{merge:true});
     document.getElementById('customerForm').classList.add('hidden');
