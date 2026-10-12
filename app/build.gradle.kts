@@ -23,6 +23,12 @@ android {
             versionNameSuffix = "-desenvolvedor"
             buildConfigField("String", "DEFAULT_PROFILE", "\"proprietario\"")
         }
+        create("empresa") {
+            dimension = "perfil"
+            applicationIdSuffix = ".empresa"
+            versionNameSuffix = "-empresa"
+            buildConfigField("String", "DEFAULT_PROFILE", "\"empresa\"")
+        }
         create("cliente") {
             dimension = "perfil"
             applicationIdSuffix = ".cliente"
@@ -62,6 +68,7 @@ tasks.register("assembleAllProfilesDebug") {
     description = "Compila os APKs Desenvolvedor, Cliente e Entregador."
     dependsOn(
         "assembleDesenvolvedorDebug",
+        "assembleEmpresaDebug",
         "assembleClienteDebug",
         "assembleEntregadorDebug"
     )
