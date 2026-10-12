@@ -12,11 +12,11 @@ O projeto contém aplicativo Android em Kotlin/Jetpack Compose, quatro variantes
 
 ### 1. Credenciais diferentes no Android e na Web
 
-- O cadastro/login da empresa no Android grava `adminPasswordHash` no documento `companies` e compara esse hash localmente no login.
-- O painel Web `invite/empresa/index.html` usa `createUserWithEmailAndPassword` e `signInWithEmailAndPassword` do Firebase Authentication.
-- Portanto, a senha cadastrada no Android não cria necessariamente uma conta Firebase Authentication; a mesma combinação e-mail/senha pode não funcionar no painel Web, e vice-versa.
+- O cadastro/login da empresa no Android antes comparava `adminPasswordHash` localmente no Firestore; o painel Web já usava Firebase Authentication.
+- A branch agora tenta unificar Android e Web em Firebase Authentication, faz migração gradual de senhas antigas e exige confirmação do e-mail antes de concluir o cadastro/login.
+- O Android verifica se `authUid` já está vinculado a outra conta antes de gravar. A Web também confere esse campo antes de abrir o painel.
 
-**Correção necessária:** unificar o acesso da empresa em Firebase Authentication (e-mail/senha) nos dois clientes, migrar/recuperar contas antigas com cuidado e persistir o UID autenticado da empresa. Não apagar o mecanismo antigo até existir um caminho de migração testado.
+**Limite de segurança:** essas verificações de cliente, sozinhas, não protegem o banco contra chamadas diretas ao Firestore. Como as regras atuais ainda permitem leitura/gravação global para qualquer usuário autenticado, o vínculo `authUid` só será uma barreira real quando regras ou backend impedirem que o cliente altere arbitrariamente documentos de empresas.
 
 ### 2. Regras do Firestore não isolam empresas nem perfis
 
@@ -69,15 +69,17 @@ Em `fix/auditoria-funcional-inicial` foram feitos commits para aproximar o acess
 
 - O cadastro Android da empresa tenta criar a conta por e-mail/senha no Firebase Authentication e grava o UID no documento da empresa (`authUid`).
 - Se a conta já existir, o cadastro tenta autenticar com a mesma senha antes de gravar os dados.
-- O login Android passa a autenticar pelo Firebase Authentication. Para contas antigas que ainda têm apenas `adminPasswordHash`, existe uma tentativa de migração gradual: só cria a conta Firebase se a senha informada corresponder ao hash legado.
-- O painel Web verifica o campo `authUid`: se já estiver vinculado a outro UID, bloqueia a abertura do painel; se estiver vazio, grava o UID da primeira conta autenticada que comprovou o código e o e-mail autorizado.
+- O login Android passa a autenticar pelo Firebase Authentication e exige e-mail verificado. Para contas antigas que ainda têm apenas `adminPasswordHash`, existe uma tentativa de migração gradual, seguida de confirmação do e-mail.
+- Cadastro e login Android recusam substituir um `authUid` diferente e recusam ativar um registro já ativado sem vínculo.
+- O painel Web exige e-mail verificado e confere o campo `authUid` antes de abrir o painel.
 
 ### Testes ainda necessários antes de mesclar/publicar
 
-1. Compilar todas as variantes Android, em especial `assembleDesenvolvedorDebug`, `assembleEmpresaDebug`, `assembleClienteDebug` e `assembleEntregadorDebug`.
+1. Compilar todas as variantes Android, em especial `assembleDesenvolvedorDebug`, `assembleEmpresaDebug`, `assembleClienteDebug` e `assembleEntregadorDebug`. O workflow foi configurado para executar em pushes desta branch e em pull requests para `main/master`.
 2. Testar primeiro acesso Android com empresa ainda não vinculada, acesso Web com conta já criada e migração de conta antiga.
 3. Testar casos de senha errada, e-mail já cadastrado com outra senha, e-mail sem autorização, código incorreto e empresa já vinculada a outro UID.
 4. Validar se as regras atuais do Firestore permitem as operações e preparar regras de menor privilégio com testes automatizados antes de qualquer publicação.
-5. Confirmar se o Firebase Authentication por e-mail/senha está habilitado no projeto de produção.
+5. Confirmar se o Firebase Authentication por e-mail/senha está habilitado no projeto de produção e testar a confirmação de e-mail no Android e Web.
+6. Depois, implementar regras/backend seguros; não tratar verificações do front-end como autorização do banco.
 
 **Importante:** as alterações acima estão numa branch/PR e ainda não foram compiladas ou testadas contra o projeto Firebase de produção. Não publique regras de Firestore permissivas para “fazer funcionar”; isso deixaria os dados de todas as empresas expostos a qualquer usuário autenticado.
