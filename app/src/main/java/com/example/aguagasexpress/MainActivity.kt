@@ -2732,13 +2732,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val parts = listOf(result.optString("logradouro"), result.optString("bairro"), listOf(result.optString("localidade"), result.optString("uf")).filter { it.isNotBlank() }.joinToString(" - "))
                                     .filter { it.isNotBlank() && it != "null" }
                                 clientAddress = parts.joinToString(", ")
-                                message = if (clientAddress.isBlank()) "CEP localizado. Preencha o endereço manualmente." else "Endereço localizado. Informe o número da casa abaixo."
+                                message = ""
                             }
                         }
                     }
                     if (cepSearching) Text("Pesquisando CEP…", color = LightBlue, fontSize = 12.sp)
                     if (clientAddress.isNotBlank()) {
-                        Text("Endereço encontrado pelo CEP", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
