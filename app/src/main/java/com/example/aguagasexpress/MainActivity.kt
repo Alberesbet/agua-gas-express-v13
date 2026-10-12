@@ -289,7 +289,10 @@ class MainActivity : ComponentActivity() {
             editor.remove("company_id").remove("company_role").remove("company_authenticated")
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
-        if (inviteProfile == "cliente" && webCustomerId.isNotBlank()) editor.putString("web_customer_doc_id", webCustomerId)
+        if (inviteProfile == "cliente" && webCustomerId.isNotBlank()) editor
+            .putString("web_customer_doc_id", webCustomerId)
+            .putBoolean("client_profile_saved", false)
+            .remove("client_name").remove("client_phone").remove("client_address")
         if (invitePlatform == "android" || invitePlatform == "notebook") editor.putString("invite_platform", invitePlatform)
         editor.apply()
         return true
