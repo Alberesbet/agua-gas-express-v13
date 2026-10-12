@@ -63,6 +63,14 @@ jobs:
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Publicar a página atualizada de convite e download
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/invite
+          cp invite/index.html public/invite/index.html
+          test -s public/invite/index.html
+
       - name: Publicar tela real de acesso da Empresa dentro do link de convite
         shell: bash
         run: |
