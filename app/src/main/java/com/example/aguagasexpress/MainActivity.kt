@@ -1282,7 +1282,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 OutlinedTextField(masterCompanyEmailDraft, { masterCompanyEmailDraft = it; masterCompanyMessage = "" }, label = { Text("Novo e-mail") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(6.dp))
                 Button(enabled = !loading, onClick = { changeAuthorizedEmail() }, modifier = Modifier.fillMaxWidth()) { Text("ALTERAR E-MAIL") }
-                if (masterCompanyMessage.isNotBlank()) Text(masterCompanyMessage, color = LightBlue, textAlign = TextAlign.Center, fontSize = 12.sp)
+                if (masterCompanyMessage.isNotBlank()) Text(masterCompanyMessage, color = Color(0xFF7F0000), textAlign = TextAlign.Center, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp).background(Color(0xFFFFE8E8), RoundedCornerShape(8.dp)).padding(10.dp))
                 Spacer(Modifier.height(10.dp))
                 Text("CONTROLE DA LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 if (!masterLicensePermanent) {
@@ -1533,7 +1533,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             Spacer(Modifier.height(10.dp))
             Text("O convite está sendo vinculado automaticamente à empresa. Não é necessário tocar em outro botão.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
         }
-        if (error.isNotBlank()) { Spacer(Modifier.height(12.dp)); Text(error, color = Color(0xFFFF7777), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold) }
+        if (error.isNotBlank()) { Spacer(Modifier.height(12.dp)); Text(error, color = Color(0xFF7F0000), textAlign = TextAlign.Center, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).background(Color(0xFFFFE8E8), RoundedCornerShape(8.dp)).padding(12.dp)) }
         Spacer(Modifier.height(20.dp))
         Text("Durante os testes, o mesmo e-mail pode ser reutilizado. Em produção, o controle de licença poderá exigir e-mails exclusivos.", color = Color.White, textAlign = TextAlign.Center, fontSize = 12.sp)
     }
