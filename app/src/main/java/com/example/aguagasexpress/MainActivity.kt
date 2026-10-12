@@ -1749,7 +1749,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
-    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "choice") }
+    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "register") }
     var customerLoginPhone by remember { mutableStateOf("") }
     var customerAccessLoading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -2489,7 +2489,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO E CONTINUAR") {
+                    MainButton(if (customerAccessLoading) "SALVANDO..." else "SALVAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2615,8 +2615,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
                     ErrorText(message)
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
