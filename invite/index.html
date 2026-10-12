@@ -66,10 +66,10 @@ const actions = document.getElementById('actions');
 const info = document.getElementById('info');
 const status = document.getElementById('status');
 const registration = document.getElementById('registration');
-const downloads = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/';
+const downloads = 'https://alberesbet.github.io/agua-gas-express-v13/downloads/';
 const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build';
 const apk = {
-  empresa: '',
+  empresa: downloads + 'AguaGasExpress-Empresa.apk',
   cliente: downloads + 'AguaGasExpress-Cliente.apk',
   entregador: downloads + 'AguaGasExpress-Entregador.apk',
   proprietario: downloads + 'AguaGasExpress-Desenvolvedor.apk'
@@ -145,16 +145,10 @@ if(perfil==='cliente'){
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
   title.textContent='Acesso da Empresa';
-  msg.textContent='Para o primeiro acesso, cadastre a empresa com o e-mail autorizado e crie uma senha. Se já tem cadastro, entre com e-mail e senha.';
-  if(apk){
-    addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
-  }else{
-    const note=document.createElement('p');
-    note.className='muted';
-    note.textContent='O APK exclusivo da Empresa ainda não está publicado. Não instale o APK do Desenvolvedor por este convite. Use o acesso pela web até disponibilizarmos o APK correto.';
-    actions.appendChild(note);
-  }
-  addButton('CADASTRAR EMPRESA / ENTRAR COM E-MAIL E SENHA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  msg.textContent='Este é o link oficial da sua empresa. Escolha uma das duas opções: entrar pelo navegador sem instalar, ou baixar o aplicativo Android da Empresa.';
+  addButton('ENTRAR PELA WEB — ABRIR PAINEL DA EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
+  info.textContent='As duas opções usam o mesmo código de empresa ('+(empresa||'não informado')+'). Você pode usar a Web sem instalar o aplicativo.';
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
