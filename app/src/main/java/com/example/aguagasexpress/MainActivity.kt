@@ -1778,7 +1778,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     val firestore = remember { FirebaseFirestore.getInstance() }
     val canSeeAllOrders = !prefs.getString("admin_password_hash", null).isNullOrBlank() || page == Page.DELIVERY || (page == Page.TRACKING && trackingReturnPage == Page.DELIVERY)
 
-    DisposableEffect(firestore, canSeeAllOrders) {
+    DisposableEffect(firestore, canSeeAllOrders, companyId) {
         var ordersRegistration: ListenerRegistration? = null
         var configRegistration: ListenerRegistration? = null
         var customerRegistration: ListenerRegistration? = null
@@ -1790,6 +1790,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
         fun attachListeners(uid: String) {
             if (disposed) return
+            // Cliente/entregador podem abrir o APK sem convite; não crie referências
+            // Firestore com companyId vazio. O efeito será reiniciado quando o convite
+            // resolver o código e preencher o ID real da empresa.
+            if (companyId.isBlank()) {
+                firebaseStatus = "Abra o link da empresa para vincular sua conta."
+                return
+            }
             if (canSeeAllOrders) registerAdminPushToken(prefs, firestore, companyId)
             val orderQuery = if (canSeeAllOrders) {
                 firestore.collection("orders").whereEqualTo("companyId", companyId)
