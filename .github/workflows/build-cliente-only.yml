@@ -1,0 +1,50 @@
+name: Build Cliente APK only
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-cliente-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-cliente:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-cliente-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-cliente-${{ runner.os }}-
+      - name: Install Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+      - name: Build only Cliente APK
+        run: "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleClienteDebug
+      - name: Verify Cliente APK
+        run: test -s app/build/outputs/apk/cliente/debug/app-cliente-debug.apk
+      - name: Upload only Cliente APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AguaGasExpress-Cliente-APK-teste
+          path: app/build/outputs/apk/cliente/debug/app-cliente-debug.apk
+          if-no-files-found: error
+          retention-days: 90
