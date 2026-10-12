@@ -1147,6 +1147,26 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }
     }
 
+    fun shareRoleInviteLink(role: String, code: String, companyName: String) {
+        val normalized = normalizeCompanyCode(code)
+        if (normalized.length < 6) { masterStatus = "Código da empresa inválido; não foi possível gerar o link."; return }
+        val roleLabel = if (role == "cliente") "cliente" else "entregador"
+        val direct = makeInviteLink(role, normalized)
+        val text = "Água & Gás Express — Cadastro de $roleLabel\nEmpresa: $companyName\nCódigo: $normalized\n\n$direct"
+        try {
+            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Link de cadastro de $roleLabel — $companyName")
+                putExtra(Intent.EXTRA_TEXT, text)
+            }, "Enviar link do $roleLabel"))
+            masterStatus = "Link de $roleLabel preparado para envio."
+        } catch (_: Exception) {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link de cadastro", text))
+            masterStatus = "Link de $roleLabel copiado para a área de transferência."
+        }
+    }
+
     fun loadCompanyLocally(doc: com.google.firebase.firestore.DocumentSnapshot, role: String = "admin") {
         val expiry = doc.getLong("licenseExpiresAt") ?: 0L
         val permanent = doc.getBoolean("licensePermanent") ?: false
@@ -1311,6 +1331,11 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
                 Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { shareRoleInviteLink("cliente", masterCompanyCode, masterCompanyName) }, modifier = Modifier.weight(1f), enabled = normalizeCompanyCode(masterCompanyCode).length >= 6) { Text("👤 ENVIAR LINK DO CLIENTE", textAlign = TextAlign.Center) }
+                    Button(onClick = { shareRoleInviteLink("entregador", masterCompanyCode, masterCompanyName) }, modifier = Modifier.weight(1f), enabled = normalizeCompanyCode(masterCompanyCode).length >= 6) { Text("🚚 ENVIAR LINK DO ENTREGADOR", textAlign = TextAlign.Center) }
+                }
+                Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { masterCompanyDetailsOpen = false; masterCompanyMessage = "" }) { Text("VOLTAR", color = Color.White) }
             } else {
                 Text("👑 PAINEL DO PROPRIETÁRIO", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
@@ -1365,6 +1390,11 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 Text(listedEmail, color = LightBlue, fontSize = 12.sp)
                                 Text("Código: ${listedCode} • ${if (listedActive) "Ativa" else "Inativa"}", color = Color.White, fontSize = 11.sp)
                                 Text("Toque para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { shareRoleInviteLink("cliente", listedCode, listedName) }, modifier = Modifier.weight(1f), enabled = normalizeCompanyCode(listedCode).length >= 6) { Text("👤 LINK CLIENTE", textAlign = TextAlign.Center) }
+                                    Button(onClick = { shareRoleInviteLink("entregador", listedCode, listedName) }, modifier = Modifier.weight(1f), enabled = normalizeCompanyCode(listedCode).length >= 6) { Text("🚚 LINK ENTREGADOR", textAlign = TextAlign.Center) }
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {
