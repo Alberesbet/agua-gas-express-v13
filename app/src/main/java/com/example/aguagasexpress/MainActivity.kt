@@ -72,7 +72,8 @@ import kotlinx.coroutines.delay
 
 private val Navy = Color(0xFF0B1730)
 private val Blue = Color(0xFF1688E8)
-private val LightBlue = Color(0xFF7F1D1D)
+private val LightBlue = Color(0xFFB91C1C)
+private val PanelRed = Color(0xFF7F1D1D)
 private val Orange = Color(0xFFFF8A32)
 private val Ink = Color(0xFF18253A)
 private val Green = Color(0xFF16834A)
@@ -2172,7 +2173,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
     Column(
         modifier = Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF10264A), Navy, Color(0xFF071020))))
+            .background(Brush.verticalGradient(listOf(PanelRed, Color(0xFF5F1515), Color(0xFF071020))))
             .windowInsetsPadding(WindowInsets.navigationBars)
             .imePadding()
             .verticalScroll(rememberScrollState())
