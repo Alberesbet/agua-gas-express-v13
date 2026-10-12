@@ -121,8 +121,9 @@ async function loadData(code){
  const customerDocs=cs.docs.filter(d=>d.data().active!==false);$('customerCount').textContent=customerDocs.length;$('customers').replaceChildren();
  if(!customerDocs.length)addText($('customers'),'Nenhum cliente cadastrado para esta empresa ainda.');
  customerDocs.forEach(d=>{const x=d.data();addText($('customers'),safe(x.name||x.customer)+' • '+safe(x.phone)+' • '+safe(x.address))});
- const orderDocs=os.docs.filter(d=>d.data().demo!==true&&!['Concluído','Cancelado'].includes(d.data().status||'Pendente')).sort((a,b)=>Number(b.data().id||b.id)-Number(a.data().id||a.id));
- window.companyOrders=orderDocs.map(d=>({docId:d.id,...d.data()}));
+ const allOrderDocs=os.docs.filter(d=>d.data().demo!==true).sort((a,b)=>Number(b.data().createdAt||b.data().timestamp||b.data().id||b.id)-Number(a.data().createdAt||a.data().timestamp||a.data().id||a.id));
+ const orderDocs=allOrderDocs.filter(d=>!['Concluído','Cancelado'].includes(d.data().status||'Pendente'));
+ window.companyOrders=allOrderDocs.map(d=>({docId:d.id,...d.data()}));
  if($('orderCount'))$('orderCount').textContent=orderDocs.length;$('orders').replaceChildren();
  if(!orderDocs.length)addText($('orders'),'Nenhum pedido ativo encontrado para esta empresa.');
  orderDocs.forEach(d=>{const x=d.data();const div=document.createElement('div');div.className='item';const title=document.createElement('strong');title.textContent='Pedido '+safe(x.orderNumber||x.id||d.id)+' • '+safe(x.customer||x.name);div.appendChild(title);const info=document.createElement('p');info.className='small';info.textContent=safe(x.status)+' • '+safe(x.items)+' • '+safe(x.payment)+' • '+safe(x.phone);div.appendChild(info);const total=document.createElement('p');total.textContent='Total: '+Number(x.total||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});div.appendChild(total);
