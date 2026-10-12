@@ -1786,6 +1786,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         }
     }
     var clientLastOrderId by remember { mutableStateOf<Long?>(null) }
+    var showReceiptPreview by remember { mutableStateOf(false) }
     var orderSubmitting by remember { mutableStateOf(false) }
 
     val currentOrders by rememberUpdatedState(orders)
@@ -2069,7 +2070,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             val toUpload = prepared.filter { order -> !order.demo && (canSeeAllOrders || order.customerUid == uid) }
             if (toUpload.isEmpty()) return
             toUpload.forEach { order ->
-                firestore.collection("orders").document(order.id.toString()).set(orderToFirestoreMap(order))
+                firestore.collection("orders").document(order.id.toString()).set(orderToFirestoreMap(order) + mapOf("companyCode" to normalizeCompanyCode(prefs.getString("company_code", "") ?: "")))
                     .addOnSuccessListener { firebaseStatus = "Pedido sincronizado com o Firebase." }
                     .addOnFailureListener { e -> firebaseStatus = "Falha ao enviar pedido: ${e.localizedMessage ?: "verifique as regras do Firestore"}" }
             }
@@ -2452,7 +2453,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     firestore.collection("customers").document(customerDocumentId(clientPhone)).set(mapOf(
                                         "uid" to uid,
                                         "companyId" to companyId,
-                                        "companyCode" to (prefs.getString("company_code", "") ?: ""),
+                                        "companyCode" to normalizeCompanyCode(prefs.getString("company_code", "") ?: ""),
                                         "inviteProfile" to "cliente",
                                         "name" to clientName.trim(),
                                         "phone" to clientPhone.trim(),
@@ -2463,6 +2464,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "active" to true,
                                         "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                     ), SetOptions.merge())
+                                        .addOnSuccessListener { firebaseStatus = "Cadastro do cliente sincronizado com a empresa." }
+                                        .addOnFailureListener { e ->
+                                            firebaseStatus = "Falha ao enviar cadastro do cliente: ${e.localizedMessage ?: "verifique as regras do Firestore"}"
+                                            message = firebaseStatus
+                                        }
                                 }
                                 FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
                                     saveCustomerRegistration(uid)
@@ -2526,11 +2532,58 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             Text("Itens: ${lastClientOrder.items}", color = Ink, fontSize = 13.sp)
                                             Text("Total: ${money(lastClientOrder.total)}", color = Ink, fontWeight = FontWeight.Bold)
                                             Spacer(Modifier.height(7.dp))
-                                            Button(onClick = { shareOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
-                                                Text("📄 GERAR PDF E COMPARTILHAR")
+                                            Button(onClick = { showReceiptPreview = true }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("👁 VISUALIZAR RECIBO")
                                             }
                                         }
                                     }
+                                }
+                                if (showReceiptPreview && lastClientOrder != null) {
+                                    val receiptOrder = lastClientOrder!!
+                                    val receiptCompanyName = prefs.getString("company_name", "Comércio Express") ?: "Comércio Express"
+                                    val receiptCompanyAddress = listOf(
+                                        prefs.getString("company_cep", "").orEmpty().let { if (it.isBlank()) "" else "CEP $it" },
+                                        listOf(prefs.getString("company_street", "").orEmpty(), prefs.getString("company_number", "").orEmpty()).filter { it.isNotBlank() }.joinToString(", "),
+                                        prefs.getString("company_neighborhood", "").orEmpty(),
+                                        listOf(prefs.getString("company_city", "").orEmpty(), prefs.getString("company_state", "").orEmpty()).filter { it.isNotBlank() }.joinToString(" - ")
+                                    ).filter { it.isNotBlank() }.joinToString(" • ")
+                                    AlertDialog(
+                                        onDismissRequest = { showReceiptPreview = false },
+                                        title = { Text("PRÉ-VISUALIZAÇÃO DO RECIBO") },
+                                        text = {
+                                            Column(Modifier.heightIn(max = 430.dp).verticalScroll(rememberScrollState())) {
+                                                Text("DADOS DA EMPRESA", fontWeight = FontWeight.Bold)
+                                                Text("Nome: $receiptCompanyName")
+                                                prefs.getString("company_responsible", "").orEmpty().takeIf { it.isNotBlank() }?.let { Text("Responsável: $it") }
+                                                prefs.getString("company_phone", "").orEmpty().takeIf { it.isNotBlank() }?.let { Text("Telefone: $it") }
+                                                prefs.getString("company_email", "").orEmpty().takeIf { it.isNotBlank() }?.let { Text("E-mail: $it") }
+                                                if (receiptCompanyAddress.isNotBlank()) Text("Endereço: $receiptCompanyAddress")
+                                                prefs.getString("company_code", "").orEmpty().takeIf { it.isNotBlank() }?.let { Text("Código da empresa: $it") }
+                                                Spacer(Modifier.height(10.dp))
+                                                Text("DADOS DO CLIENTE", fontWeight = FontWeight.Bold)
+                                                Text("Nome: ${receiptOrder.customer}")
+                                                Text("Telefone: ${receiptOrder.phone}")
+                                                if (receiptOrder.customerDocNumber.isNotBlank()) Text("${receiptOrder.customerDocType}: ${formatDocument(receiptOrder.customerDocType, receiptOrder.customerDocNumber)}")
+                                                Text("Endereço de entrega: ${receiptOrder.address}")
+                                                Spacer(Modifier.height(10.dp))
+                                                Text("DADOS DO PEDIDO", fontWeight = FontWeight.Bold)
+                                                Text("Pedido: #${receiptOrder.orderNumber.toString().padStart(2, '0')}")
+                                                Text("Itens e quantidades: ${receiptOrder.items}")
+                                                Text("Pagamento: ${receiptOrder.payment}")
+                                                Text("Status: ${if (receiptOrder.paid) "PAGAMENTO CONFIRMADO" else "AGUARDANDO PAGAMENTO"}")
+                                                Text("TOTAL: ${money(receiptOrder.total)}", fontWeight = FontWeight.Bold)
+                                            }
+                                        },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                showReceiptPreview = false
+                                                shareOrderReceipt(context, receiptOrder, receiptCompanyName)
+                                            }) { Text("GERAR PDF E COMPARTILHAR") }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showReceiptPreview = false }) { Text("FECHAR") }
+                                        }
+                                    )
                                 }
                                 if (lastClientOrder.status == "Chegou ao endereço") {
                                     Spacer(Modifier.height(10.dp))
@@ -2633,8 +2686,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         RadioButton(selected = payment == "PIX", onClick = { payment = "PIX"; message = "" })
                         Text("Pix", color = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        RadioButton(selected = payment == "Fiado", onClick = { payment = "Fiado"; message = "No momento não estamos com essa opção. Aguarde mais alguns instantes." })
-                        Text("Fiado", color = Color.White)
+                        RadioButton(selected = payment == "Cartão", onClick = { payment = "Cartão"; message = "" })
+                        Text("Cartão", color = Color.White)
                     }
                     if (payment == "Dinheiro") {
                         InputField("Quanto você vai entregar? (ex.: 50)", cashGiven, true) { cashGiven = it; message = "" }
@@ -2645,14 +2698,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             Text("Faltam: ${money(clientTotal - cashValue)}", color = Color(0xFFFFD0A8), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         } else {
                             Text("Informe o valor que vai entregar para calcular o troco.", color = Color.White, fontSize = 12.sp)
-                        }
-                    }
-                    if (payment == "Fiado") {
-                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
-                            Text(
-                                "No momento não estamos com essa opção. Aguarde mais alguns instantes.",
-                                modifier = Modifier.padding(14.dp), color = Ink, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                     if (payment == "PIX") {
@@ -2689,7 +2734,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             companyId.isBlank() -> message = "A empresa ainda não foi vinculada. Abra novamente o link recebido da empresa e aguarde a confirmação antes de pedir."
                             products.any { (clientQuantities[it.name] ?: 0) > 0 && it.price <= 0.0 } -> message = "Os preços ainda não foram configurados pela administração."
                             payment == "PIX" && pixKey.isBlank() -> message = "A administração precisa cadastrar a chave Pix."
-                            payment == "Fiado" -> message = "No momento não estamos com essa opção. Aguarde mais alguns instantes."
                             payment == "Dinheiro" && (cashGiven.replace(",", ".").toDoubleOrNull() ?: 0.0) < clientTotal -> message = "Informe um valor igual ou maior que o total para calcular o troco."
                             else -> {
                                 val items = products.mapNotNull { product ->
@@ -2724,7 +2768,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 fun uploadOrderForCustomer(uid: String) {
                                     val orderForCloud = order.copy(customerUid = uid)
                                     firestore.collection("orders").document(orderForCloud.id.toString())
-                                        .set(orderToFirestoreMap(orderForCloud))
+                                        .set(orderToFirestoreMap(orderForCloud) + mapOf("companyCode" to normalizeCompanyCode(prefs.getString("company_code", "") ?: "")))
                                         .addOnSuccessListener {
                                             // Atualiza o token do cliente depois de gravar o pedido, para que o aviso de chegada
                                             // também funcione se o token ainda estivesse sendo gerado quando o cliente tocou em pedir.
