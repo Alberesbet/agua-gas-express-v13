@@ -53,9 +53,11 @@ jobs:
           set -euo pipefail
           mkdir -p public/downloads
           cp app/build/outputs/apk/desenvolvedor/debug/*.apk public/downloads/AguaGasExpress-Desenvolvedor.apk
+          cp app/build/outputs/apk/empresa/debug/*.apk public/downloads/AguaGasExpress-Empresa.apk
           cp app/build/outputs/apk/cliente/debug/*.apk public/downloads/AguaGasExpress-Cliente.apk
           cp app/build/outputs/apk/entregador/debug/*.apk public/downloads/AguaGasExpress-Entregador.apk
           test -s public/downloads/AguaGasExpress-Desenvolvedor.apk
+          test -s public/downloads/AguaGasExpress-Empresa.apk
           test -s public/downloads/AguaGasExpress-Cliente.apk
           test -s public/downloads/AguaGasExpress-Entregador.apk
           ls -lh public/downloads/
