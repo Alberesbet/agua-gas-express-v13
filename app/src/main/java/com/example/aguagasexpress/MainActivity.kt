@@ -613,6 +613,34 @@ private fun hashPassword(value: String): String {
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
+private fun pixField(id: String, value: String): String = id + value.length.toString().padStart(2, '0') + value
+
+private fun buildPixPayload(key: String, amount: Double, recipient: String): String {
+    val merchantName = (recipient.ifBlank { "RECEBEDOR PIX" })
+        .uppercase(Locale.ROOT).filter { it.isLetterOrDigit() || it == ' ' || it == '.' || it == '-' }
+        .take(25).ifBlank { "RECEBEDOR PIX" }
+    val merchantAccount = pixField("00", "br.gov.bcb.pix") + pixField("01", key.trim())
+    val payloadWithoutCrc =
+        pixField("00", "01") +
+        pixField("26", merchantAccount) +
+        pixField("52", "0000") +
+        pixField("53", "986") +
+        pixField("54", String.format(Locale.US, "%.2f", amount.coerceAtLeast(0.0))) +
+        pixField("58", "BR") +
+        pixField("59", merchantName) +
+        pixField("60", "BRASIL") +
+        pixField("62", pixField("05", "***")) +
+        "6304"
+    var crc = 0xFFFF
+    payloadWithoutCrc.toByteArray(Charsets.UTF_8).forEach { byte ->
+        crc = crc xor ((byte.toInt() and 0xFF) shl 8)
+        repeat(8) {
+            crc = if ((crc and 0x8000) != 0) ((crc shl 1) xor 0x1021) and 0xFFFF else (crc shl 1) and 0xFFFF
+        }
+    }
+    return payloadWithoutCrc + crc.toString(16).uppercase(Locale.ROOT).padStart(4, '0')
+}
+
 private fun money(value: Double): String =
     "R$ " + String.format(Locale.forLanguageTag("pt-BR"), "%.2f", value)
 
@@ -2420,6 +2448,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 fun saveCustomerRegistration(uid: String) {
                                     firestore.collection("customers").document(customerDocumentId(clientPhone)).set(mapOf(
                                         "uid" to uid,
+                                        "companyId" to companyId,
+                                        "companyCode" to (prefs.getString("company_code", "") ?: ""),
+                                        "inviteProfile" to "cliente",
                                         "name" to clientName.trim(),
                                         "phone" to clientPhone.trim(),
                                         "documentType" to clientDocType,
@@ -2635,11 +2666,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     fontSize = 17.sp
                                 )
                                 if (pixKey.isNotBlank()) {
-                                    MainButton("COPIAR CHAVE PIX") {
+                                    MainButton("COPIAR CHAVE PIX COM VALOR ${money(clientTotal)}") {
+                                        val pixPayload = buildPixPayload(pixKey, clientTotal, pixRecipientName)
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Chave Pix", pixKey))
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Pix com valor ${money(clientTotal)}", pixPayload))
                                         pixCopied = true
-                                        message = "Chave Pix copiada."
+                                        message = "Pix copia e cola com valor ${money(clientTotal)} copiado. Confira o valor no aplicativo do banco antes de confirmar."
                                     }
                                 }
                             }
@@ -2651,6 +2683,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         if (orderSubmitting) return@MainButton
                         when {
                             clientWaterQty + clientGasQty == 0 -> message = "Escolha ao menos um produto."
+                            companyId.isBlank() -> message = "A empresa ainda não foi vinculada. Abra novamente o link recebido da empresa e aguarde a confirmação antes de pedir."
                             products.any { (clientQuantities[it.name] ?: 0) > 0 && it.price <= 0.0 } -> message = "Os preços ainda não foram configurados pela administração."
                             payment == "PIX" && pixKey.isBlank() -> message = "A administração precisa cadastrar a chave Pix."
                             payment == "Fiado" -> message = "No momento não estamos com essa opção. Aguarde mais alguns instantes."
