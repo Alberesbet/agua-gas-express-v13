@@ -290,10 +290,12 @@ class MainActivity : ComponentActivity() {
             editor.remove("company_id").remove("company_role").remove("company_authenticated")
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
-        if (inviteProfile == "cliente" && webCustomerId.isNotBlank()) editor
-            .putString("web_customer_doc_id", webCustomerId)
-            .putBoolean("client_profile_saved", false)
-            .remove("client_name").remove("client_phone").remove("client_address")
+        if (inviteProfile == "cliente") {
+            editor.putBoolean("client_profile_saved", false)
+                .remove("client_name").remove("client_phone").remove("client_address")
+                .remove("client_street_address").remove("client_house_number")
+            if (webCustomerId.isNotBlank()) editor.putString("web_customer_doc_id", webCustomerId)
+        }
         if (invitePlatform == "android" || invitePlatform == "notebook") editor.putString("invite_platform", invitePlatform)
         editor.apply()
         return true
@@ -1793,7 +1795,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
         fun attachListeners(uid: String) {
             if (disposed) return
-            if (canSeeAllOrders) registerAdminPushToken(prefs, firestore, companyId)
+            if (canSeeAllOrders && companyId.isNotBlank()) registerAdminPushToken(prefs, firestore, companyId)
             val orderQuery = if (canSeeAllOrders) {
                 firestore.collection("orders").whereEqualTo("companyId", companyId)
             } else {
@@ -1907,9 +1909,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 }
             }
 
-            configRegistration?.remove()
-            configRegistration = companyConfigRef(firestore, companyId)
-                .addSnapshotListener { snapshot, error ->
+            if (companyId.isNotBlank()) {
+                configRegistration?.remove()
+                configRegistration = companyConfigRef(firestore, companyId)
+                    .addSnapshotListener { snapshot, error ->
                     if (disposed) return@addSnapshotListener
                     if (error != null) {
                         firebaseStatus = "Firebase conectado parcialmente; confira as regras de configuração."
@@ -1995,6 +1998,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         companyConfigRef(firestore, companyId).set(initialConfig, SetOptions.merge())
                     }
                 }
+            }
         }
 
         if (auth.currentUser != null) {
@@ -2621,6 +2625,41 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     Spacer(Modifier.height(8.dp))
                                     Button(onClick = { trackingOrderId = lastClientOrder.id; trackingReturnPage = Page.CUSTOMER; page = Page.TRACKING }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) {
                                         Text("📍 ACOMPANHAR ENTREGA")
+                                    }
+                                }
+                                if (lastClientOrder.status in listOf("Autorizado", "Em entrega", "Chegou ao endereço")) {
+                                    Spacer(Modifier.height(7.dp))
+                                    OutlinedButton(
+                                        onClick = {
+                                            val companyLabel = prefs.getString("company_name", "Água & Gás Express") ?: "Água & Gás Express"
+                                            val shareText = buildString {
+                                                append("Acompanhe minha entrega no Água & Gás Express\\n")
+                                                append("Empresa: ").append(companyLabel).append("\\n")
+                                                append("Pedido #").append(lastClientOrder.orderNumber.toString().padStart(2, '0')).append("\\n")
+                                                append("Status: ").append(when (lastClientOrder.status) {
+                                                    "Autorizado" -> "Pedido confirmado; aguardando saída para entrega"
+                                                    "Em entrega" -> "Saiu para entrega"
+                                                    "Chegou ao endereço" -> "O entregador chegou ao endereço"
+                                                    else -> lastClientOrder.status
+                                                }).append("\\n")
+                                                append("Endereço: ").append(listOf(clientAddress, clientHouseNumber).filter { it.isNotBlank() }.joinToString(", ")).append("\\n")
+                                                append("Itens: ").append(lastClientOrder.items).append("\\n")
+                                                append("Total: ").append(money(lastClientOrder.total))
+                                                if (lastClientOrder.status == "Em entrega") append("\\nAbra o app e toque em Acompanhar entrega para ver a localização atual.")
+                                            }
+                                            try {
+                                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                                }
+                                                context.startActivity(Intent.createChooser(sendIntent, "Compartilhar a entrega"))
+                                            } catch (e: Exception) {
+                                                message = "Não foi possível compartilhar a entrega: ${e.localizedMessage ?: "tente novamente"}"
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("📤 COMPARTILHAR A ENTREGA")
                                     }
                                 }
                             }
