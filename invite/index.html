@@ -129,7 +129,8 @@ if(perfil==='cliente'){
     showStatus('Código da empresa não encontrado no link.');
   }else{
     msg.textContent='Convite da empresa '+empresa+'. Baixe o aplicativo do Cliente. Ao abrir o app, você irá direto para a tela de cadastro.';
-    addButton('BAIXAR APLICATIVO DO CLIENTE',apk,true);
+    const installOrOpenUrl = 'intent://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'#Intent;scheme=aguagasexpress;package=com.example.aguagasexpress.cliente;S.browser_fallback_url='+encodeURIComponent(apk)+';end';
+    addButton('BAIXAR APLICATIVO DO CLIENTE',installOrOpenUrl,true);
     info.textContent='O código da empresa será usado para vincular seu cadastro no aplicativo.';
   }
 }else if(perfil==='entregador'){
