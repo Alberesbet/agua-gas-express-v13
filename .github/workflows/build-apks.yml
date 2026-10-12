@@ -6,6 +6,7 @@ on:
       - main
       - master
       - fix/apks-cliente-entregador-notebook
+      - fix/customer-company-link-and-flow
   workflow_dispatch:
 
 permissions:
