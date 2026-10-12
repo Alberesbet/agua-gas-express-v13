@@ -121,15 +121,16 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Cadastro do Cliente';
+  title.textContent='Aplicativo do Cliente';
+  // O convite web de cliente serve somente para instalar o app. O cadastro acontece dentro do aplicativo.
+  registration.classList.add('hidden');
   if(!empresa){
-    msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
-    showStatus('Não foi possível identificar a empresa neste convite.');
+    msg.textContent='Este link está sem o código da empresa. Peça à empresa para enviar um novo convite.';
+    showStatus('Código da empresa não encontrado no link.');
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Preencha o cadastro abaixo sem precisar instalar o aplicativo primeiro. Depois você poderá baixar o app para fazer pedidos.';
-    registration.classList.remove('hidden');
+    msg.textContent='Convite da empresa '+empresa+'. Baixe o aplicativo do Cliente. Ao abrir o app, você irá direto para a tela de cadastro.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk,true);
-    info.textContent='O cadastro será enviado para a empresa pelo link. Depois, instale o aplicativo para fazer pedidos.';
+    info.textContent='O código da empresa será usado para vincular seu cadastro no aplicativo.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
