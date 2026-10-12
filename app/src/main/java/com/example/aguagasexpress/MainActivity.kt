@@ -134,7 +134,8 @@ private fun normalizeCompanyCode(value: String): String =
     value.trim().uppercase(Locale.ROOT).filter { it.isLetterOrDigit() }.take(12)
 
 private fun generateCompanyCode(): String =
-    UUID.randomUUID().toString().replace("-", "").take(6).uppercase(Locale.ROOT)
+    // Oito caracteres ampliam o espaço de códigos; a criação ainda confere colisões no Firestore.
+    UUID.randomUUID().toString().replace("-", "").take(8).uppercase(Locale.ROOT)
 
 private fun generateCommercialLicenseKey(): String {
     val raw = UUID.randomUUID().toString().replace("-", "").uppercase(Locale.ROOT)
