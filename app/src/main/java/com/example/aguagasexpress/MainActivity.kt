@@ -2756,10 +2756,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
                                 val customerRef = firestore.collection("customers").document(customerDocumentId(digits))
-                                fun saveRegistration(uid: String) {
+                                fun persistCustomer(uid: String, resolvedCompanyId: String, resolvedCompanyCode: String) {
+                                    if (resolvedCompanyId.isBlank() || resolvedCompanyCode.isBlank()) {
+                                        customerAccessLoading = false
+                                        message = "Não foi possível vincular este cadastro à empresa. Abra novamente o convite enviado pela empresa."
+                                        return
+                                    }
                                     val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
-                                    val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
-                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("company_code", "").orEmpty() })
                                     customerRef.set(mapOf(
                                         "uid" to uid,
                                         "name" to clientName.trim(),
@@ -2771,13 +2774,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "companyId" to resolvedCompanyId,
                                         "companyCode" to resolvedCompanyCode,
                                         "active" to true,
+                                        "registrationSource" to "android-invite",
                                         "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                     ), SetOptions.merge())
                                         .addOnSuccessListener {
                                             customerAccessLoading = false
                                             clientProfileSaved = true
                                             customerAccessMode = "orders"
-                                            prefs.edit().putString("client_name", clientName.trim())
+                                            companyId = resolvedCompanyId
+                                            prefs.edit()
+                                                .putString("company_id", resolvedCompanyId)
+                                                .putString("company_code", resolvedCompanyCode)
+                                                .putString("client_name", clientName.trim())
                                                 .putString("client_phone", clientPhone.trim())
                                                 .putString("client_doc_type", clientDocType)
                                                 .putString("client_doc_number", normalizeDocument(clientDocNumber))
@@ -2790,7 +2798,51 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         }
                                         .addOnFailureListener { e ->
                                             customerAccessLoading = false
-                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}. O cadastro não foi concluído."
+                                        }
+                                }
+                                fun saveRegistration(uid: String) {
+                                    val resolvedCompanyCode = normalizeCompanyCode(
+                                        invitedCompanyCode.ifBlank {
+                                            prefs.getString("invite_company_code", "").orEmpty()
+                                        }.ifBlank { prefs.getString("company_code", "").orEmpty() }
+                                    )
+                                    val knownCompanyId = companyId.ifBlank {
+                                        prefs.getString("pending_company_id", "").orEmpty()
+                                    }.ifBlank { prefs.getString("company_id", "").orEmpty() }
+                                    if (resolvedCompanyCode.isBlank()) {
+                                        customerAccessLoading = false
+                                        message = "O convite não contém o código da empresa. Peça à empresa para enviar o link novamente."
+                                        return
+                                    }
+                                    if (knownCompanyId.isNotBlank()) {
+                                        persistCustomer(uid, knownCompanyId, resolvedCompanyCode)
+                                        return
+                                    }
+                                    // Não gravar um cliente órfão com companyId vazio: resolver o código antes de salvar.
+                                    firestore.collection("companies")
+                                        .whereEqualTo("companyCode", resolvedCompanyCode)
+                                        .limit(1)
+                                        .get()
+                                        .addOnSuccessListener { companies ->
+                                            val company = companies.documents.firstOrNull()
+                                            if (company == null || company.getBoolean("active") == false) {
+                                                customerAccessLoading = false
+                                                message = "Não foi possível encontrar uma empresa ativa com este convite. Peça um novo link à empresa."
+                                            } else {
+                                                companyId = company.id
+                                                companyName = company.getString("name") ?: "Empresa"
+                                                prefs.edit()
+                                                    .putString("company_id", company.id)
+                                                    .putString("company_name", companyName)
+                                                    .putString("company_code", company.getString("companyCode") ?: resolvedCompanyCode)
+                                                    .apply()
+                                                persistCustomer(uid, company.id, company.getString("companyCode") ?: resolvedCompanyCode)
+                                            }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            customerAccessLoading = false
+                                            message = "Falha ao validar o convite: ${e.localizedMessage ?: "verifique a internet"}. O cadastro não foi concluído."
                                         }
                                 }
                                 fun checkDuplicate(uid: String) {
