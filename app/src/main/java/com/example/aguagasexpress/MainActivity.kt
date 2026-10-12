@@ -607,6 +607,15 @@ private fun shareOrderReceipt(context: Context, order: Order, companyName: Strin
 }
 
 private fun customerDocumentId(phone: String): String {
+    // The web invite stores customer IDs as the first 32 hexadecimal characters of SHA-256.
+    // Use the same representation in Android so web-registered customers can sign in here.
+    val bytes = MessageDigest.getInstance("SHA-256")
+        .digest(phone.filter(Char::isDigit).toByteArray(Charsets.UTF_8))
+    return bytes.take(16).joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+}
+
+private fun legacyCustomerDocumentId(phone: String): String {
+    // Backward compatibility with customer documents created by older APKs (Base64 IDs).
     return hashPassword(phone.filter(Char::isDigit)).take(32)
 }
 
@@ -2380,26 +2389,36 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         customerAccessLoading = true
                         val db = FirebaseFirestore.getInstance()
                         fun lookupCustomer() {
+                            fun applyCustomerDocument(doc: com.google.firebase.firestore.DocumentSnapshot) {
+                                customerAccessLoading = false
+                                if (!doc.exists() || doc.getString("phone").orEmpty().filter { it.isDigit() } != digits) {
+                                    message = "Não encontramos cadastro com esse telefone. Confira o telefone usado no cadastro da web ou escolha Fazer cadastro."
+                                } else {
+                                    clientName = doc.getString("name").orEmpty()
+                                    clientPhone = doc.getString("phone").orEmpty()
+                                    clientDocType = doc.getString("documentType")?.takeIf { it.isNotBlank() } ?: "CPF"
+                                    clientDocNumber = doc.getString("documentNumber").orEmpty()
+                                    clientCep = doc.getString("cep").orEmpty()
+                                    clientAddress = doc.getString("address").orEmpty()
+                                    clientHouseNumber = ""
+                                    prefs.edit().putString("client_name", clientName).putString("client_phone", clientPhone)
+                                        .putString("client_doc_type", clientDocType).putString("client_doc_number", clientDocNumber)
+                                        .putString("client_cep", clientCep).putString("client_street_address", clientAddress)
+                                        .putString("client_address", clientAddress).putBoolean("client_profile_saved", true).apply()
+                                    clientProfileSaved = true
+                                    customerAccessMode = "orders"
+                                    message = ""
+                                }
+                            }
                             db.collection("customers").document(customerDocumentId(digits)).get()
                                 .addOnSuccessListener { doc ->
-                                    customerAccessLoading = false
-                                    if (!doc.exists() || doc.getString("phone").orEmpty().filter { it.isDigit() } != digits) {
-                                        message = "Não encontramos cadastro com esse telefone. Escolha Fazer cadastro."
+                                    if (doc.exists()) {
+                                        applyCustomerDocument(doc)
                                     } else {
-                                        clientName = doc.getString("name").orEmpty()
-                                        clientPhone = doc.getString("phone").orEmpty()
-                                        clientDocType = doc.getString("documentType")?.takeIf { it.isNotBlank() } ?: "CPF"
-                                        clientDocNumber = doc.getString("documentNumber").orEmpty()
-                                        clientCep = doc.getString("cep").orEmpty()
-                                        clientAddress = doc.getString("address").orEmpty()
-                                        clientHouseNumber = ""
-                                        prefs.edit().putString("client_name", clientName).putString("client_phone", clientPhone)
-                                            .putString("client_doc_type", clientDocType).putString("client_doc_number", clientDocNumber)
-                                            .putString("client_cep", clientCep).putString("client_street_address", clientAddress)
-                                            .putString("client_address", clientAddress).putBoolean("client_profile_saved", true).apply()
-                                        clientProfileSaved = true
-                                        customerAccessMode = "orders"
-                                        message = ""
+                                        // Try the old Base64 document ID before reporting a missing registration.
+                                        db.collection("customers").document(legacyCustomerDocumentId(digits)).get()
+                                            .addOnSuccessListener { legacyDoc -> applyCustomerDocument(legacyDoc) }
+                                            .addOnFailureListener { e -> customerAccessLoading = false; message = "Falha ao consultar cadastro: ${e.localizedMessage ?: "verifique a internet"}" }
                                     }
                                 }
                                 .addOnFailureListener { e -> customerAccessLoading = false; message = "Falha ao consultar cadastro: ${e.localizedMessage ?: "verifique a internet"}" }
