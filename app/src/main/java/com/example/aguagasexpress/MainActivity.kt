@@ -1420,6 +1420,12 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 "appVersion" to "12.0-test")
                         firestore.collection("companies").document(id).set(data).addOnSuccessListener {
                             masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
+                            // Atualiza a lista imediatamente após salvar, sem depender de fechar e reabrir o aplicativo.
+                            firestore.collection("companies").get().addOnSuccessListener { snap ->
+                                masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                            }.addOnFailureListener { e ->
+                                masterStatus = "Empresa cadastrada, mas a lista não atualizou: ${e.localizedMessage ?: "erro ao atualizar"}"
+                            }
                         }.addOnFailureListener { e -> loading = false; error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}" }
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CADASTRANDO..." else "CADASTRAR EMPRESA") }
@@ -1469,12 +1475,12 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                     val details = e.localizedMessage ?: "erro no Firebase"
                                     error = if (details.contains("permission", ignoreCase = true) ||
                                         details.contains("insufficient permissions", ignoreCase = true)) {
-                                        "O Firebase bloqueou o cadastro (permissão insuficiente). É necessário corrigir/publicar as regras do Cloud Firestore do projeto; não é erro da senha. Detalhe: $details"
+                                        "ETAPA 2/2 — A autorização foi localizada, mas o Firebase negou salvar os dados da empresa. Confira se as regras publicadas são do mesmo projeto Firebase usado por este APK. Detalhe: $details"
                                     } else {
                                         "Não foi possível salvar a empresa: $details"
                                     }
                                 }
-                            }.addOnFailureListener { e -> loading = false; error = e.localizedMessage ?: "Não foi possível validar a autorização." }
+                            }.addOnFailureListener { e -> loading = false; error = "ETAPA 1/2 — O Firebase negou a leitura da autorização da empresa antes de salvar o cadastro. Confira se as regras publicadas correspondem ao projeto Firebase usado por este APK. Detalhe: ${e.localizedMessage ?: "erro ao consultar autorização"}" }
                         }
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "SALVANDO..." else "CADASTRAR EMPRESA") }
