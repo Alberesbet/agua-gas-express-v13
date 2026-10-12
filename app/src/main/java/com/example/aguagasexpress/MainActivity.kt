@@ -320,10 +320,6 @@ class MainActivity : ComponentActivity() {
             })
         }
         val prefs = getSharedPreferences("agua_gas_preferences", Context.MODE_PRIVATE)
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 2601)
-        }
         val defaultProfile = BuildConfig.DEFAULT_PROFILE
         val hasInvite = applyInviteIntent(intent, prefs)
 
@@ -359,6 +355,17 @@ class MainActivity : ComponentActivity() {
                         CommercialCompanyGate(prefs)
                     }
                 }
+            }
+        }
+
+        // Ask for Android 13+ notification permission only after the first UI
+        // frame is scheduled. A permission prompt must never block launcher startup.
+        window.decorView.post {
+            if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                runCatching {
+                    requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 2601)
+                }.onFailure { android.util.Log.e("AguaGasExpress", "Falha ao solicitar permissão de notificações", it) }
             }
         }
     }
