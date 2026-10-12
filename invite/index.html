@@ -96,7 +96,7 @@ if(perfil==='cliente'){
   }else{
     msg.textContent='Convite da empresa '+empresa+'. Você pode baixar o aplicativo e fazer o cadastro por lá, ou preencher o cadastro nesta página e depois instalar o aplicativo para fazer pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ FIZ O CADASTRO — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
+    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
     registration.classList.remove('hidden');
     info.textContent='Depois de instalar o aplicativo, volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”.';
   }
@@ -160,7 +160,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora instale o aplicativo e toque em “JÁ FIZ O CADASTRO — ABRIR APLICATIVO”. Seus dados serão aproveitados, sem precisar cadastrar novamente.');
     msg.textContent='Cadastro concluído — abra o aplicativo para fazer pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
+    addButton('JÁ FIZ O CADASTRO — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
