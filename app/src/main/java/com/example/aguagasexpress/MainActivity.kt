@@ -1673,6 +1673,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
     var apkOperationInProgress by remember { mutableStateOf(false) }
+    var showCustomerManagementDialog by remember { mutableStateOf(false) }
+    var companyCustomerDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
+    var customerManagementMessage by remember { mutableStateOf("") }
 
     fun importApk(role: String, uri: Uri?) {
         if (uri == null || apkOperationInProgress) return
@@ -2805,6 +2808,113 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         }
                         Text("🔒 Licença de uso da empresa — não vender, ceder ou revender o aplicativo.", color = Color(0xFFFFD0A8), fontSize = 11.sp)
                     }
+                }
+                Spacer(Modifier.height(12.dp))
+                val companyCodeForLinks = normalizeCompanyCode(prefs.getString("company_code", "") ?: "")
+                val customerInviteLink = makeInviteLink("cliente", companyCodeForLinks)
+                val deliveryInviteLink = makeInviteLink("entregador", companyCodeForLinks)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF173B62)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("🔗 LINKS DE CADASTRO", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                        Text("Compartilhe estes links. Eles ficam visíveis aqui para copiar quando precisar.", color = Color(0xFFDCE8F5), fontSize = 12.sp)
+                        Text("LINK DO CLIENTE", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = if (companyCodeForLinks.isNotBlank()) customerInviteLink else "Aguardando código da empresa",
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp),
+                            singleLine = false
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(enabled = companyCodeForLinks.isNotBlank(), onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link do cliente", customerInviteLink))
+                                message = "Link do cliente copiado."
+                            }, modifier = Modifier.weight(1f)) { Text("COPIAR LINK") }
+                            OutlinedButton(enabled = companyCodeForLinks.isNotBlank(), onClick = {
+                                val shareText = "Água & Gás Express — Cadastro de cliente\n$customerInviteLink"
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText) }, "Enviar link do cliente"))
+                            }, modifier = Modifier.weight(1f)) { Text("COMPARTILHAR") }
+                        }
+                        Divider(color = Color(0xFF426487))
+                        Text("LINK DO ENTREGADOR", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = if (companyCodeForLinks.isNotBlank()) deliveryInviteLink else "Aguardando código da empresa",
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp),
+                            singleLine = false
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(enabled = companyCodeForLinks.isNotBlank(), onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link do entregador", deliveryInviteLink))
+                                message = "Link do entregador copiado."
+                            }, modifier = Modifier.weight(1f)) { Text("COPIAR LINK") }
+                            OutlinedButton(enabled = companyCodeForLinks.isNotBlank(), onClick = {
+                                val shareText = "Água & Gás Express — Cadastro de entregador\n$deliveryInviteLink"
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText) }, "Enviar link do entregador"))
+                            }, modifier = Modifier.weight(1f)) { Text("COMPARTILHAR") }
+                        }
+                        if (companyCodeForLinks.isBlank()) Text("O código da empresa ainda não foi carregado. Saia e entre novamente após sincronizar a conta.", color = Color(0xFFFFD0A8), fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = {
+                        customerManagementMessage = "Carregando clientes..."
+                        firestore.collection("customers").whereEqualTo("companyId", companyId).get()
+                            .addOnSuccessListener { snapshot ->
+                                companyCustomerDocs = snapshot.documents
+                                customerManagementMessage = if (snapshot.isEmpty) "Nenhum cliente vinculado a esta empresa." else ""
+                                showCustomerManagementDialog = true
+                            }
+                            .addOnFailureListener { e ->
+                                customerManagementMessage = "Não foi possível carregar os clientes: ${e.localizedMessage ?: "erro do Firebase"}"
+                                showCustomerManagementDialog = true
+                            }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9F2727))
+                ) { Text("👥 GERENCIAR / EXCLUIR CLIENTES", fontWeight = FontWeight.Bold) }
+                if (showCustomerManagementDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showCustomerManagementDialog = false },
+                        title = { Text("Clientes cadastrados") },
+                        text = {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (customerManagementMessage.isNotBlank()) Text(customerManagementMessage, color = Ink)
+                                companyCustomerDocs.forEach { customerDoc ->
+                                    val customerName = customerDoc.getString("name") ?: customerDoc.getString("customerName") ?: "Cliente sem nome"
+                                    val customerPhone = customerDoc.getString("phone") ?: customerDoc.getString("mobile") ?: customerDoc.id
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F4F8))) {
+                                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                            Text(customerName, color = Ink, fontWeight = FontWeight.Bold)
+                                            Text(customerPhone, color = Ink, fontSize = 12.sp)
+                                            TextButton(onClick = {
+                                                customerDoc.reference.delete()
+                                                    .addOnSuccessListener {
+                                                        companyCustomerDocs = companyCustomerDocs.filterNot { it.id == customerDoc.id }
+                                                        customerManagementMessage = "Cliente excluído."
+                                                        registeredCustomerCount = maxOf(0, registeredCustomerCount - 1)
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        customerManagementMessage = "Não foi possível excluir: ${e.localizedMessage ?: "erro do Firebase"}"
+                                                    }
+                                            }) { Text("🗑 EXCLUIR CLIENTE", color = Color(0xFF9F2727)) }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showCustomerManagementDialog = false }) { Text("FECHAR") } }
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 Text("RESUMO DAS VENDAS", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, letterSpacing = 1.sp)
