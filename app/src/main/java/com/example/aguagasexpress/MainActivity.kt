@@ -1723,6 +1723,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
+    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "choice") }
+    var customerLoginPhone by remember { mutableStateOf("") }
+    var customerAccessLoading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         val webCustomerId = prefs.getString("web_customer_doc_id", "").orEmpty()
         if (webCustomerId.isNotBlank()) {
@@ -2353,7 +2356,59 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
             Page.CUSTOMER -> {
                 Header("Faça seu pedido", "🛍️")
-                if (!clientProfileSaved) {
+                if (!clientProfileSaved && customerAccessMode == "choice") {
+                    Text("Você já tem cadastro?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(14.dp))
+                    MainButton("LOGIN PELO TELEFONE") { customerLoginPhone = ""; message = ""; customerAccessMode = "login" }
+                    Spacer(Modifier.height(10.dp))
+                    MainButton("FAZER CADASTRO") { message = ""; customerAccessMode = "register" }
+                    ErrorText(message)
+                    BackButton { page = Page.HOME }
+                } else if (!clientProfileSaved && customerAccessMode == "login") {
+                    Text("Informe o telefone usado no cadastro. Não precisa de senha.", color = Color.White, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(12.dp))
+                    InputField("Telefone cadastrado", customerLoginPhone) { customerLoginPhone = it }
+                    ErrorText(message)
+                    MainButton(if (customerAccessLoading) "CONSULTANDO..." else "ENTRAR") {
+                        if (customerAccessLoading) return@MainButton
+                        val digits = customerLoginPhone.filter { it.isDigit() }
+                        if (digits.isBlank()) { message = "Informe seu telefone."; return@MainButton }
+                        customerAccessLoading = true
+                        val db = FirebaseFirestore.getInstance()
+                        fun lookupCustomer() {
+                            db.collection("customers").document(customerDocumentId(digits)).get()
+                                .addOnSuccessListener { doc ->
+                                    customerAccessLoading = false
+                                    if (!doc.exists() || doc.getString("phone").orEmpty().filter { it.isDigit() } != digits) {
+                                        message = "Não encontramos cadastro com esse telefone. Escolha Fazer cadastro."
+                                    } else {
+                                        clientName = doc.getString("name").orEmpty()
+                                        clientPhone = doc.getString("phone").orEmpty()
+                                        clientDocType = doc.getString("documentType")?.takeIf { it.isNotBlank() } ?: "CPF"
+                                        clientDocNumber = doc.getString("documentNumber").orEmpty()
+                                        clientCep = doc.getString("cep").orEmpty()
+                                        clientAddress = doc.getString("address").orEmpty()
+                                        clientHouseNumber = ""
+                                        prefs.edit().putString("client_name", clientName).putString("client_phone", clientPhone)
+                                            .putString("client_doc_type", clientDocType).putString("client_doc_number", clientDocNumber)
+                                            .putString("client_cep", clientCep).putString("client_street_address", clientAddress)
+                                            .putString("client_address", clientAddress).putBoolean("client_profile_saved", true).apply()
+                                        clientProfileSaved = true
+                                        customerAccessMode = "orders"
+                                        message = ""
+                                    }
+                                }
+                                .addOnFailureListener { e -> customerAccessLoading = false; message = "Falha ao consultar cadastro: ${e.localizedMessage ?: "verifique a internet"}" }
+                        }
+                        if (FirebaseAuth.getInstance().currentUser != null) lookupCustomer()
+                        else FirebaseAuth.getInstance().signInAnonymously()
+                            .addOnSuccessListener { lookupCustomer() }
+                            .addOnFailureListener { e -> customerAccessLoading = false; message = "Não foi possível conectar ao Firebase: ${e.localizedMessage ?: "tente novamente"}" }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    BackButton { page = Page.HOME }
+                } else if (!clientProfileSaved) {
                     Text("Primeiro, preencha seus dados para entrega.", color = Color.White, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(12.dp))
                     InputField("Nome completo", clientName) { clientName = it }
