@@ -2372,7 +2372,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 if (!clientProfileSaved && customerAccessMode == "choice") {
                     Text("Você já tem cadastro?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(14.dp))
-                    MainButton("LOGIN PELO TELEFONE") { customerLoginPhone = ""; message = ""; customerAccessMode = "login" }
+                    MainButton("ENTRAR") {
+                        // Permite abrir a tela de pedidos sem solicitar telefone ou senha.
+                        // O telefone continua sendo usado somente para impedir cadastros duplicados.
+                        message = ""
+                        customerAccessMode = "orders"
+                        clientProfileSaved = true
+                    }
                     Spacer(Modifier.height(10.dp))
                     MainButton("FAZER CADASTRO") { message = ""; customerAccessMode = "register" }
                     ErrorText(message)
