@@ -61,3 +61,23 @@ As páginas Web gravam clientes em `customers` após autenticação anônima e r
 ## Limite desta auditoria
 
 Esta é uma revisão estática do código e da documentação no repositório. Ainda não prova que o projeto Firebase publicado tem as mesmas regras/configurações nem que os APKs atuais compilam e abrem corretamente. Não foram publicadas alterações no Firebase nem trocadas regras de produção nesta etapa.
+
+
+## Alterações iniciais propostas nesta branch
+
+Em `fix/auditoria-funcional-inicial` foram feitos commits para aproximar o acesso Android e Web de uma identidade única Firebase Authentication:
+
+- O cadastro Android da empresa tenta criar a conta por e-mail/senha no Firebase Authentication e grava o UID no documento da empresa (`authUid`).
+- Se a conta já existir, o cadastro tenta autenticar com a mesma senha antes de gravar os dados.
+- O login Android passa a autenticar pelo Firebase Authentication. Para contas antigas que ainda têm apenas `adminPasswordHash`, existe uma tentativa de migração gradual: só cria a conta Firebase se a senha informada corresponder ao hash legado.
+- O painel Web verifica o campo `authUid`: se já estiver vinculado a outro UID, bloqueia a abertura do painel; se estiver vazio, grava o UID da primeira conta autenticada que comprovou o código e o e-mail autorizado.
+
+### Testes ainda necessários antes de mesclar/publicar
+
+1. Compilar todas as variantes Android, em especial `assembleDesenvolvedorDebug`, `assembleEmpresaDebug`, `assembleClienteDebug` e `assembleEntregadorDebug`.
+2. Testar primeiro acesso Android com empresa ainda não vinculada, acesso Web com conta já criada e migração de conta antiga.
+3. Testar casos de senha errada, e-mail já cadastrado com outra senha, e-mail sem autorização, código incorreto e empresa já vinculada a outro UID.
+4. Validar se as regras atuais do Firestore permitem as operações e preparar regras de menor privilégio com testes automatizados antes de qualquer publicação.
+5. Confirmar se o Firebase Authentication por e-mail/senha está habilitado no projeto de produção.
+
+**Importante:** as alterações acima estão numa branch/PR e ainda não foram compiladas ou testadas contra o projeto Firebase de produção. Não publique regras de Firestore permissivas para “fazer funcionar”; isso deixaria os dados de todas as empresas expostos a qualquer usuário autenticado.
