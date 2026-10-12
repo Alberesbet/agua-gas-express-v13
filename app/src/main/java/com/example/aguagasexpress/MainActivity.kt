@@ -1681,6 +1681,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 error = "Não foi possível consultar a autorização da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
                             }
                         }
+                    }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "SALVANDO..." else "CADASTRAR EMPRESA") }
             }
             Spacer(Modifier.height(8.dp))
