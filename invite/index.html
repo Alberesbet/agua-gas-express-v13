@@ -89,16 +89,15 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Cadastro do Cliente';
+  title.textContent='Aplicativo do Cliente';
   if(!empresa){
     msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
-    showStatus('Cadastro não iniciado: falta o código da empresa no convite.');
+    showStatus('Não foi possível identificar a empresa neste convite.');
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Você pode baixar o aplicativo e fazer o cadastro por lá, ou preencher o cadastro nesta página e depois instalar o aplicativo para fazer pedidos.';
+    msg.textContent='Convite da empresa '+empresa+'. Primeiro baixe e instale o aplicativo do Cliente. Depois toque no ícone do aplicativo e faça seu cadastro dentro dele. Ao concluir o cadastro, você deverá entrar na tela de pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
-    registration.classList.remove('hidden');
-    info.textContent='Depois de instalar o aplicativo, volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”.';
+    addButton('ABRIR PÁGINA ALTERNATIVA DE DOWNLOAD',releasePage,true);
+    info.textContent='Não faça o cadastro nesta página e não precisa tocar em “já instalei”. Depois da instalação, abra o ícone Água & Gás Express no celular e conclua o cadastro no aplicativo.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
