@@ -140,10 +140,10 @@ if(perfil==='cliente'){
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
   title.textContent='Acesso da Empresa';
-  msg.textContent='Este é o link oficial da sua empresa. Escolha uma das duas opções: entrar pelo navegador sem instalar, ou baixar o aplicativo Android da Empresa.';
-  addButton('ENTRAR PELA WEB — ABRIR PAINEL DA EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  msg.textContent='Link da Empresa: escolha como deseja entrar. No notebook, use a opção pela Web. No celular, você pode baixar o aplicativo Android.';
+  addButton('ENTRAR PELA WEB — NOTEBOOK OU CELULAR','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
   addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
-  info.textContent='As duas opções usam o mesmo código de empresa ('+(empresa||'não informado')+'). Você pode usar a Web sem instalar o aplicativo.';
+  info.textContent='Código da empresa: '+(empresa||'não informado')+'. A opção Web abre o painel no navegador e não exige instalar o aplicativo. A opção Android baixa o APK da Empresa.';
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
