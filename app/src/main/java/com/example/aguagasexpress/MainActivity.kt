@@ -1551,30 +1551,71 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                     .filter { it.isNotBlank() }.joinToString(" — ")
 
                                 fun persistCompanyAccount(uid: String) {
-                                    val updated = mapOf(
-                                        "name" to companyName.trim(), "responsible" to responsible.trim(),
-                                        "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(),
-                                        "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(),
-                                        "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(),
-                                        "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(),
-                                        "authUid" to uid, "adminPasswordHash" to hashPassword(password),
-                                        "originAddress" to origin, "activated" to true, "active" to true,
-                                        "companyActivatedAt" to System.currentTimeMillis()
-                                    )
-                                    firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge())
-                                        .addOnSuccessListener {
-                                            saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
-                                            prefs.edit().putString("company_responsible", responsible.trim())
-                                                .putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password))
-                                                .putString("company_role", "admin").putBoolean("company_authenticated", true)
-                                                .putBoolean("company_just_registered", true).remove("pending_company_id")
-                                                .remove("invite_profile").remove("invite_company_code").apply()
-                                            loading = false; mode = "app"; error = ""
-                                        }
-                                        .addOnFailureListener { e ->
+                                    val currentUser = auth.currentUser
+                                    if (currentUser == null || currentUser.uid != uid) {
+                                        loading = false
+                                        error = "A sessão Firebase mudou durante o cadastro. Entre novamente."
+                                        return
+                                    }
+                                    // Só permitir ativação depois que a pessoa comprovar que controla o e-mail autorizado.
+                                    currentUser.reload().addOnSuccessListener reloadCompanyUser@ {
+                                        val verifiedUser = auth.currentUser
+                                        if (verifiedUser == null || verifiedUser.uid != uid) {
                                             loading = false
-                                            error = "A conta foi autenticada, mas não foi possível salvar os dados da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                            error = "A sessão Firebase mudou durante a verificação."
+                                            return@reloadCompanyUser
                                         }
+                                        if (!verifiedUser.isEmailVerified) {
+                                            verifiedUser.sendEmailVerification()
+                                                .addOnSuccessListener {
+                                                    loading = false
+                                                    error = "Enviamos um link de confirmação para o e-mail da empresa. Confirme o endereço e depois entre novamente para concluir o cadastro."
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    loading = false
+                                                    error = "Não foi possível enviar a confirmação de e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                }
+                                            return@reloadCompanyUser
+                                        }
+                                        val existingAuthUid = doc.getString("authUid").orEmpty()
+                                        if (existingAuthUid.isNotBlank() && existingAuthUid != uid) {
+                                            loading = false
+                                            error = "Esta empresa já está vinculada a outra conta Firebase. Solicite a revisão do acesso ao Desenvolvedor."
+                                            return@reloadCompanyUser
+                                        }
+                                        if (doc.getBoolean("activated") == true && existingAuthUid.isBlank()) {
+                                            loading = false
+                                            error = "Esta empresa já foi ativada por outra conta. Entre pelo login da empresa."
+                                            return@reloadCompanyUser
+                                        }
+                                        val updated = mapOf(
+                                            "name" to companyName.trim(), "responsible" to responsible.trim(),
+                                            "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(),
+                                            "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(),
+                                            "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(),
+                                            "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(),
+                                            "authUid" to uid, "adminPasswordHash" to hashPassword(password),
+                                            "originAddress" to origin, "activated" to true, "active" to true,
+                                            "companyActivatedAt" to System.currentTimeMillis()
+                                        )
+                                        firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge())
+                                            .addOnSuccessListener {
+                                                saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
+                                                prefs.edit().putString("company_responsible", responsible.trim())
+                                                    .putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password))
+                                                    .putString("company_role", "admin").putBoolean("company_authenticated", true)
+                                                    .putBoolean("company_just_registered", true).remove("pending_company_id")
+                                                    .remove("invite_profile").remove("invite_company_code").apply()
+                                                loading = false; mode = "app"; error = ""
+                                            }
+                                            .addOnFailureListener { e ->
+                                                loading = false
+                                                error = "A conta foi autenticada, mas não foi possível salvar os dados da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                            }
+                                    }.addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Não foi possível confirmar o estado do e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
+                                    }
                                 }
 
                                 auth.createUserWithEmailAndPassword(email.trim(), password)
@@ -1636,14 +1677,49 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             }
                     }
                     fun finishLogin(doc: com.google.firebase.firestore.DocumentSnapshot, uid: String) {
-                        doc.reference.set(mapOf("authUid" to uid), SetOptions.merge())
-                            .addOnSuccessListener {
-                                loadCompanyLocally(doc); loading = false; mode = "app"; error = ""
-                            }
-                            .addOnFailureListener { e ->
+                        val currentUser = auth.currentUser
+                        if (currentUser == null || currentUser.uid != uid) {
+                            loading = false
+                            error = "A sessão Firebase mudou durante o login. Tente novamente."
+                            return
+                        }
+                        currentUser.reload().addOnSuccessListener reloadLoginUser@ {
+                            val verifiedUser = auth.currentUser
+                            if (verifiedUser == null || verifiedUser.uid != uid) {
                                 loading = false
-                                error = "A senha foi aceita, mas não foi possível vincular a conta à empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                error = "A sessão Firebase mudou durante a verificação."
+                                return@reloadLoginUser
                             }
+                            if (!verifiedUser.isEmailVerified) {
+                                verifiedUser.sendEmailVerification()
+                                    .addOnSuccessListener {
+                                        loading = false
+                                        error = "Seu e-mail ainda não foi confirmado. Enviamos um link de confirmação; abra-o e depois entre novamente."
+                                    }
+                                    .addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Seu e-mail ainda não foi confirmado e não foi possível reenviar o link: ${e.localizedMessage ?: "erro no Firebase"}"
+                                    }
+                                return@reloadLoginUser
+                            }
+                            val existingAuthUid = doc.getString("authUid").orEmpty()
+                            if (existingAuthUid.isNotBlank() && existingAuthUid != uid) {
+                                loading = false
+                                error = "Esta empresa já está vinculada a outra conta Firebase. Solicite a revisão do acesso ao Desenvolvedor."
+                                return@reloadLoginUser
+                            }
+                            doc.reference.set(mapOf("authUid" to uid), SetOptions.merge())
+                                .addOnSuccessListener {
+                                    loadCompanyLocally(doc); loading = false; mode = "app"; error = ""
+                                }
+                                .addOnFailureListener { e ->
+                                    loading = false
+                                    error = "A senha foi aceita, mas não foi possível vincular a conta à empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                }
+                        }.addOnFailureListener { e ->
+                            loading = false
+                            error = "Não foi possível confirmar o estado do e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
+                        }
                     }
 
                     auth.signInWithEmailAndPassword(normalizedEmail, loginPassword)
