@@ -2390,28 +2390,23 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton("SALVAR CADASTRO E CONTINUAR") {
+                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO E CONTINUAR") {
+                        if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
-                            clientPhone.isBlank() -> message = "Informe seu telefone."
+                            clientPhone.filter { it.isDigit() }.isBlank() -> message = "Informe seu telefone."
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
                             clientHouseNumber.isBlank() -> message = "Informe o número da casa."
                             else -> {
-                                clientProfileSaved = true
-                                val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
-                                prefs.edit().putString("client_name", clientName.trim())
-                                    .putString("client_phone", clientPhone.trim())
-                                    .putString("client_doc_type", clientDocType)
-                                    .putString("client_doc_number", normalizeDocument(clientDocNumber))
-                                    .putString("client_cep", clientCep.trim())
-                                    .putString("client_street_address", clientAddress.trim())
-                                    .putString("client_house_number", clientHouseNumber.trim())
-                                    .putString("client_address", savedAddress)
-                                    .putBoolean("client_profile_saved", true).apply()
-
-                                fun saveCustomerRegistration(uid: String) {
-                                    firestore.collection("customers").document(customerDocumentId(clientPhone)).set(mapOf(
+                                customerAccessLoading = true
+                                val digits = clientPhone.filter { it.isDigit() }
+                                val customerRef = firestore.collection("customers").document(customerDocumentId(digits))
+                                fun saveRegistration(uid: String) {
+                                    val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
+                                    val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
+                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("company_code", "").orEmpty() })
+                                    customerRef.set(mapOf(
                                         "uid" to uid,
                                         "name" to clientName.trim(),
                                         "phone" to clientPhone.trim(),
@@ -2419,19 +2414,66 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "documentNumber" to normalizeDocument(clientDocNumber),
                                         "cep" to clientCep.trim(),
                                         "address" to savedAddress,
+                                        "companyId" to resolvedCompanyId,
+                                        "companyCode" to resolvedCompanyCode,
                                         "active" to true,
                                         "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                     ), SetOptions.merge())
+                                        .addOnSuccessListener {
+                                            customerAccessLoading = false
+                                            clientProfileSaved = true
+                                            customerAccessMode = "orders"
+                                            prefs.edit().putString("client_name", clientName.trim())
+                                                .putString("client_phone", clientPhone.trim())
+                                                .putString("client_doc_type", clientDocType)
+                                                .putString("client_doc_number", normalizeDocument(clientDocNumber))
+                                                .putString("client_cep", clientCep.trim())
+                                                .putString("client_street_address", clientAddress.trim())
+                                                .putString("client_house_number", clientHouseNumber.trim())
+                                                .putString("client_address", savedAddress)
+                                                .putBoolean("client_profile_saved", true).apply()
+                                            message = ""
+                                        }
+                                        .addOnFailureListener { e ->
+                                            customerAccessLoading = false
+                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                        }
                                 }
-                                FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
-                                    saveCustomerRegistration(uid)
-                                } ?: FirebaseAuth.getInstance().signInAnonymously().addOnSuccessListener { result ->
-                                    result.user?.uid?.let { saveCustomerRegistration(it) }
+                                fun checkDuplicate(uid: String) {
+                                    customerRef.get()
+                                        .addOnSuccessListener { existing ->
+                                            if (existing.exists() && existing.getString("phone").orEmpty().filter { it.isDigit() } == digits) {
+                                                customerAccessLoading = false
+                                                message = "Esse número já tem cadastro. Use Login pelo telefone."
+                                                customerAccessMode = "register"
+                                            } else {
+                                                saveRegistration(uid)
+                                            }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            customerAccessLoading = false
+                                            message = "Não foi possível verificar se o telefone já existe: ${e.localizedMessage ?: "tente novamente"}"
+                                        }
                                 }
-                                message = ""
+                                FirebaseAuth.getInstance().currentUser?.uid?.let { uid -> checkDuplicate(uid) }
+                                    ?: FirebaseAuth.getInstance().signInAnonymously()
+                                        .addOnSuccessListener { result ->
+                                            val uid = result.user?.uid
+                                            if (uid.isNullOrBlank()) {
+                                                customerAccessLoading = false
+                                                message = "Não foi possível autenticar no Firebase."
+                                            } else checkDuplicate(uid)
+                                        }
+                                        .addOnFailureListener { e ->
+                                            customerAccessLoading = false
+                                            message = "Não foi possível conectar ao Firebase: ${e.localizedMessage ?: "tente novamente"}"
+                                        }
                             }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    ErrorText(message)
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text("Telefone: $clientPhone", color = Color.White, textAlign = TextAlign.Center, fontSize = 12.sp, lineHeight = 14.sp)
