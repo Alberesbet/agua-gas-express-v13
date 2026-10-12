@@ -1197,6 +1197,26 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             if (masterLoggedIn) loadLatestMasterCompany()
         }
 
+        // Mantém a lista de empresas atualizada sem precisar fechar e abrir o app.
+        DisposableEffect(masterLoggedIn) {
+            var companiesListener: ListenerRegistration? = null
+            if (masterLoggedIn) {
+                ensureFirebase {
+                    companiesListener = firestore.collection("companies")
+                        .addSnapshotListener { snapshot, exception ->
+                            if (exception != null) {
+                                masterStatus = "Não foi possível atualizar a lista em tempo real: ${exception.localizedMessage ?: "verifique as regras do Firestore"}"
+                            } else if (snapshot != null) {
+                                masterCompanyDocs = snapshot.documents.sortedByDescending {
+                                    it.getLong("createdAt") ?: 0L
+                                }
+                            }
+                        }
+                }
+            }
+            onDispose { companiesListener?.remove() }
+        }
+
         // O envio manual de APK foi removido: a distribuição deve ser feita por links.
 
         if (mode == "master") {
@@ -1444,7 +1464,16 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                     saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
                                     prefs.edit().putString("company_responsible", responsible.trim()).putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password)).putString("company_role", "admin").putBoolean("company_authenticated", true).putBoolean("company_just_registered", true).remove("pending_company_id").remove("invite_profile").remove("invite_company_code").apply()
                                     loading = false; mode = "app"; error = ""
-                                }.addOnFailureListener { e -> loading = false; error = "Não foi possível salvar a empresa: ${e.localizedMessage ?: "erro no Firebase"}" }
+                                }.addOnFailureListener { e ->
+                                    loading = false
+                                    val details = e.localizedMessage ?: "erro no Firebase"
+                                    error = if (details.contains("permission", ignoreCase = true) ||
+                                        details.contains("insufficient permissions", ignoreCase = true)) {
+                                        "O Firebase bloqueou o cadastro (permissão insuficiente). É necessário corrigir/publicar as regras do Cloud Firestore do projeto; não é erro da senha. Detalhe: $details"
+                                    } else {
+                                        "Não foi possível salvar a empresa: $details"
+                                    }
+                                }
                             }.addOnFailureListener { e -> loading = false; error = e.localizedMessage ?: "Não foi possível validar a autorização." }
                         }
                     }
@@ -1494,14 +1523,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     val companyName = prefs.getString("company_name", "Empresa") ?: "Empresa"
     val justRegistered = prefs.getBoolean("company_just_registered", false)
     var page by remember { mutableStateOf(
-        if (justRegistered && prefs.getString("company_role", "member").orEmpty() == "admin") {
-            Page.ADMIN
-        } else {
-            when (prefs.getString("company_role", "member").orEmpty()) {
-                "delivery" -> Page.DELIVERY_LOGIN
-                "customer" -> Page.CUSTOMER
-                else -> Page.HOME
-            }
+        when (prefs.getString("company_role", "member").orEmpty()) {
+            // A tela principal da empresa deve ser o painel novo também depois de
+            // sair e entrar novamente, não apenas no primeiro cadastro.
+            "admin" -> Page.ADMIN
+            "delivery" -> Page.DELIVERY_LOGIN
+            "customer" -> Page.CUSTOMER
+            else -> Page.HOME
         }
     ) }
     LaunchedEffect(Unit) {
