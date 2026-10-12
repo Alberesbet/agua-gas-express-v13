@@ -1992,7 +1992,16 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
-    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "choice") }
+    var customerAccessMode by remember {
+        mutableStateOf(
+            when {
+                prefs.getBoolean("client_profile_saved", false) -> "orders"
+                prefs.getString("invite_profile", "").equals("cliente", ignoreCase = true) &&
+                    !prefs.getString("invite_company_code", "").isNullOrBlank() -> "register"
+                else -> "choice"
+            }
+        )
+    }
     var customerLoginPhone by remember { mutableStateOf("") }
     var customerAccessLoading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
