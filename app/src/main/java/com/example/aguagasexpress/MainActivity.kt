@@ -1373,20 +1373,31 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                             .setMessage("Deseja realmente excluir ${listedName} (código ${listedCode})? Esta ação remove o cadastro principal e a configuração principal da empresa.")
                                             .setNegativeButton("CANCELAR", null)
                                             .setPositiveButton("EXCLUIR") { _, _ ->
-                                                val companyRef = firestore.collection("companies").document(companyDoc.id)
-                                                companyRef.collection("config").document("main").delete()
-                                                    .addOnSuccessListener {
-                                                        companyRef.delete()
+                                                val companiesRef = firestore.collection("companies")
+                                                val selectedEmail = companyDoc.getString("email").orEmpty().trim()
+                                                companiesRef.get()
+                                                    .addOnSuccessListener { allCompanies ->
+                                                        // Remove também registros duplicados do mesmo e-mail, que podem continuar bloqueando um novo cadastro.
+                                                        val targets = allCompanies.documents.filter { doc ->
+                                                            doc.id == companyDoc.id ||
+                                                                (selectedEmail.isNotBlank() && doc.getString("email").orEmpty().trim().equals(selectedEmail, ignoreCase = true))
+                                                        }
+                                                        val batch = firestore.batch()
+                                                        targets.forEach { doc ->
+                                                            batch.delete(doc.reference.collection("config").document("main"))
+                                                            batch.delete(doc.reference)
+                                                        }
+                                                        batch.commit()
                                                             .addOnSuccessListener {
-                                                                masterStatus = "Empresa ${listedName} excluída."
+                                                                masterStatus = "Empresa excluída. Foram removidos ${targets.size} cadastro(s) com o mesmo e-mail."
                                                                 loadLatestMasterCompany()
                                                             }
                                                             .addOnFailureListener { e ->
-                                                                masterStatus = "Não foi possível excluir a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                                masterStatus = "Não foi possível concluir a exclusão no Firebase: ${e.localizedMessage ?: "erro no Firebase"}"
                                                             }
                                                     }
                                                     .addOnFailureListener { e ->
-                                                        masterStatus = "Não foi possível excluir a configuração: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                        masterStatus = "Não foi possível consultar os cadastros para excluir: ${e.localizedMessage ?: "erro no Firebase"}"
                                                     }
                                             }
                                             .show()
