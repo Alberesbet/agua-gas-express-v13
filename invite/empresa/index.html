@@ -76,7 +76,7 @@ window.addEventListener('error', () => { document.getElementById('authStatus').t
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,deleteUser,sendPasswordResetEmail,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import {getFirestore,collection,query,where,getDocs,getDoc,doc,setDoc,updateDoc,limit} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import {getFirestore,collection,query,where,getDocs,getDoc,doc,setDoc,updateDoc,deleteDoc,limit} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const firebaseConfig={apiKey:'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',authDomain:'agua-e-gas-express.firebaseapp.com',projectId:'agua-e-gas-express',storageBucket:'agua-e-gas-express.firebasestorage.app',messagingSenderId:'1071136912572'};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);
@@ -114,14 +114,33 @@ async function verifyAndOpen(user){
 }
 async function loadData(code){
  $('customers').textContent='Carregando clientes…';$('orders').textContent='Carregando pedidos…';
- const companyId=verifiedCompany?.id||code;
- const [cs,os]=await Promise.all([
-  getDocs(query(collection(db,'customers'),where('companyCode','==',String(verifiedCompany?.companyCode||code).trim().toUpperCase()),limit(500))).catch(()=>getDocs(query(collection(db,'customers'),where('companyId','==',companyId),limit(500)))),
-  getDocs(query(collection(db,'orders'),where('companyId','==',companyId),limit(500)))
+ const companyId=String(verifiedCompany?.id||code).trim();
+ const companyCode=String(verifiedCompany?.companyCode||code).trim().toUpperCase();
+ // Consulta por código e por ID, porque versões antigas do APK podem salvar um ou outro.
+ // Uma consulta vazia não lança erro; por isso unimos explicitamente todas as consultas.
+ const safeQuery=promise=>promise.catch(error=>{console.warn('Consulta Firebase não disponível:',error);return null});
+ const [customersByCode,customersById,customersByCodeId,ordersById,ordersByCodeId,ordersByCode]=await Promise.all([
+  safeQuery(getDocs(query(collection(db,'customers'),where('companyCode','==',companyCode),limit(500)))),
+  safeQuery(getDocs(query(collection(db,'customers'),where('companyId','==',companyId),limit(500)))),
+  safeQuery(getDocs(query(collection(db,'customers'),where('companyId','==',companyCode),limit(500)))),
+  safeQuery(getDocs(query(collection(db,'orders'),where('companyId','==',companyId),limit(500)))),
+  safeQuery(getDocs(query(collection(db,'orders'),where('companyId','==',companyCode),limit(500)))),
+  safeQuery(getDocs(query(collection(db,'orders'),where('companyCode','==',companyCode),limit(500))))
  ]);
- const customerDocs=cs.docs.filter(d=>d.data().active!==false);$('customerCount').textContent=customerDocs.length;$('customers').replaceChildren();
+ const uniqueDocs=(...snaps)=>{const map=new Map();snaps.filter(Boolean).forEach(s=>s.docs.forEach(d=>map.set(d.id,d)));return [...map.values()]};
+ const customerDocs=uniqueDocs(customersByCode,customersById,customersByCodeId).filter(d=>d.data().active!==false&&d.data().inviteProfile!=='entregador');
+ $('customerCount').textContent=customerDocs.length;$('customers').replaceChildren();
  if(!customerDocs.length)addText($('customers'),'Nenhum cliente cadastrado para esta empresa ainda.');
- customerDocs.forEach(d=>{const x=d.data();addText($('customers'),safe(x.name||x.customer)+' • '+safe(x.phone)+' • '+safe(x.address))});
+ customerDocs.forEach(d=>{
+  const x=d.data(),card=document.createElement('div');card.className='item';
+  const name=document.createElement('strong');name.textContent=x.name||x.customer||'Cliente sem nome';card.appendChild(name);
+  const info=document.createElement('p');info.className='small';info.textContent=[x.phone||'',x.address||x.street||'',x.cep?'CEP '+x.cep:''].filter(Boolean).join(' • ')||'Sem telefone/endereço informado';card.appendChild(info);
+  const actions=document.createElement('div');actions.className='item-actions';
+  const del=document.createElement('button');del.className='secondary';del.textContent='EXCLUIR CLIENTE';
+  del.onclick=async()=>{if(!confirm('Excluir o cadastro de '+(x.name||x.customer||'este cliente')+'? Os pedidos e o histórico serão preservados.'))return;del.disabled=true;try{await deleteDoc(doc(db,'customers',d.id));await loadData(code)}catch(e){alert('Não foi possível excluir o cadastro no Firebase: '+(e.message||e.code));del.disabled=false}};
+  actions.appendChild(del);card.appendChild(actions);$('customers').appendChild(card);
+ });
+ const os={docs:uniqueDocs(ordersById,ordersByCodeId,ordersByCode)};
  const allOrderDocs=os.docs.filter(d=>d.data().demo!==true).sort((a,b)=>Number(b.data().createdAt||b.data().timestamp||b.data().id||b.id)-Number(a.data().createdAt||a.data().timestamp||a.data().id||a.id));
  const orderDocs=allOrderDocs.filter(d=>!['Concluído','Cancelado'].includes(d.data().status||'Pendente'));
  window.companyOrders=allOrderDocs.map(d=>({docId:d.id,...d.data()}));
