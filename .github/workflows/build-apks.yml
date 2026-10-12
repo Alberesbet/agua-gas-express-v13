@@ -6,6 +6,11 @@ on:
       - main
       - master
       - fix/apks-cliente-entregador-notebook
+      - fix/auditoria-funcional-inicial
+  pull_request:
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 permissions:
