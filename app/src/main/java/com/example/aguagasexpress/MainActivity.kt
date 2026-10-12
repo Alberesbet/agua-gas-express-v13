@@ -2624,34 +2624,87 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
 
             Page.ADMIN -> {
-                Header("Administração", "⚙️")
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("🏢 $companyName", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                        Text("Código da empresa: ${prefs.getString("company_code", "—") ?: "—"}", color = LightBlue, fontWeight = FontWeight.Bold)
-                        Text("🔒 Licença de uso da empresa — não vender, ceder ou revender o aplicativo.", color = Color(0xFFFFD0A8), fontSize = 11.sp, textAlign = TextAlign.Center)
-                        Text("Licença: ${trialExpiryLabel(prefs)}", color = if (localTrialActive(prefs)) Green else Color(0xFFFF6B6B), fontWeight = FontWeight.Bold)
-                        Text("Chave da licença: ${prefs.getString("license_key", "—") ?: "—"}", color = LightBlue, fontSize = 12.sp)
+                Header("Painel da Empresa", "🏢")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF123B64)),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🏪", fontSize = 30.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(companyName.ifBlank { "Sua empresa" }, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                                Text("PAINEL DE CONTROLE", color = LightBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                            }
+                        }
+                        Divider(color = Color(0xFF426487))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("CÓDIGO DA EMPRESA", color = LightBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(prefs.getString("company_code", "—") ?: "—", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("LICENÇA", color = LightBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(trialExpiryLabel(prefs), color = if (localTrialActive(prefs)) Color(0xFF86EFAC) else Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Text("🔒 Licença de uso da empresa — não vender, ceder ou revender o aplicativo.", color = Color(0xFFFFD0A8), fontSize = 11.sp)
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF17375F)), shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("VENDAS DE HOJE", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                        Text("Água: $salesDailyWater  •  Gás: $salesDailyGas", color = Color.White, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(5.dp))
-                        Text("ACUMULADO DO MÊS", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                        Text("Água: $salesMonthlyWater  •  Gás: $salesMonthlyGas", color = Color.White, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(7.dp))
-                        Text("CLIENTES INSCRITOS", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                        Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("RESUMO DAS VENDAS", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, letterSpacing = 1.sp)
+                Spacer(Modifier.height(7.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF174A50)),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("💧", fontSize = 24.sp)
+                            Text("ÁGUA HOJE", color = Color(0xFF9CECF0), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("$salesDailyWater", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("garrafões", color = Color(0xFFB7D6E8), fontSize = 11.sp)
+                        }
+                    }
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF56351F)),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("🔥", fontSize = 24.sp)
+                            Text("GÁS HOJE", color = Color(0xFFFFD0A8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("$salesDailyGas", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("botijão(ões)", color = Color(0xFFE8C9B3), fontSize = 11.sp)
+                        }
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-
+                Spacer(Modifier.height(9.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF172D4A)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("📊 ACUMULADO DO MÊS", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("💧 Água: $salesMonthlyWater", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("🔥 Gás: $salesMonthlyGas", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                        Divider(color = Color(0xFF35516F))
+                        Text("👥 CLIENTES INSCRITOS", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
-
                 if (showShareLinksDialog) {
                     AlertDialog(
                         onDismissRequest = { showShareLinksDialog = false },
