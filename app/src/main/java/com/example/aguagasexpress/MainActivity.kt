@@ -1504,26 +1504,74 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             loading = true
                             val pendingId = prefs.getString("pending_company_id", "").orEmpty()
                             firestore.collection("companies").document(pendingId).get().addOnSuccessListener { doc ->
-                                if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) { loading = false; error = "Autorização da empresa não encontrada."; return@addOnSuccessListener }
-                                val permanent = doc.getBoolean("licensePermanent") ?: false; val expiry = doc.getLong("licenseExpiresAt") ?: 0L; val code = doc.getString("companyCode") ?: generateCompanyCode(); val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState").filter { it.isNotBlank() }.joinToString(" — ")
-                                val updated = mapOf("name" to companyName.trim(), "responsible" to responsible.trim(), "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(), "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(), "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(), "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(), "adminPasswordHash" to hashPassword(password), "originAddress" to origin, "activated" to true, "active" to true, "companyActivatedAt" to System.currentTimeMillis())
-                                firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge()).addOnSuccessListener {
-                                    saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
-                                    prefs.edit().putString("company_responsible", responsible.trim()).putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password)).putString("company_role", "admin").putBoolean("company_authenticated", true).putBoolean("company_just_registered", true).remove("pending_company_id").remove("invite_profile").remove("invite_company_code").apply()
-                                    loading = false; mode = "app"; error = ""
-                                }.addOnFailureListener { e ->
+                                if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) {
                                     loading = false
-                                    val details = e.localizedMessage ?: "erro no Firebase"
-                                    error = if (details.contains("permission", ignoreCase = true) ||
-                                        details.contains("insufficient permissions", ignoreCase = true)) {
-                                        "ETAPA 2/2 — A autorização foi localizada, mas o Firebase negou salvar os dados da empresa. Confira se as regras publicadas são do mesmo projeto Firebase usado por este APK. Detalhe: $details"
-                                    } else {
-                                        "Não foi possível salvar a empresa: $details"
-                                    }
+                                    error = "Autorização da empresa não encontrada."
+                                    return@addOnSuccessListener
                                 }
-                            }.addOnFailureListener { e -> loading = false; error = "ETAPA 1/2 — O Firebase negou a leitura da autorização da empresa antes de salvar o cadastro. Confira se as regras publicadas correspondem ao projeto Firebase usado por este APK. Detalhe: ${e.localizedMessage ?: "erro ao consultar autorização"}" }
+                                val permanent = doc.getBoolean("licensePermanent") ?: false
+                                val expiry = doc.getLong("licenseExpiresAt") ?: 0L
+                                val code = doc.getString("companyCode") ?: generateCompanyCode()
+                                val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState")
+                                    .filter { it.isNotBlank() }.joinToString(" — ")
+
+                                fun persistCompanyAccount(uid: String) {
+                                    val updated = mapOf(
+                                        "name" to companyName.trim(), "responsible" to responsible.trim(),
+                                        "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(),
+                                        "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(),
+                                        "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(),
+                                        "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(),
+                                        "authUid" to uid, "adminPasswordHash" to hashPassword(password),
+                                        "originAddress" to origin, "activated" to true, "active" to true,
+                                        "companyActivatedAt" to System.currentTimeMillis()
+                                    )
+                                    firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge())
+                                        .addOnSuccessListener {
+                                            saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
+                                            prefs.edit().putString("company_responsible", responsible.trim())
+                                                .putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password))
+                                                .putString("company_role", "admin").putBoolean("company_authenticated", true)
+                                                .putBoolean("company_just_registered", true).remove("pending_company_id")
+                                                .remove("invite_profile").remove("invite_company_code").apply()
+                                            loading = false; mode = "app"; error = ""
+                                        }
+                                        .addOnFailureListener { e ->
+                                            loading = false
+                                            error = "A conta foi autenticada, mas não foi possível salvar os dados da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                        }
+                                }
+
+                                auth.createUserWithEmailAndPassword(email.trim(), password)
+                                    .addOnSuccessListener { credential ->
+                                        val uid = credential.user?.uid
+                                        if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                        else persistCompanyAccount(uid)
+                                    }
+                                    .addOnFailureListener { createError ->
+                                        val emailExists = createError.message.orEmpty().contains("already in use", true) ||
+                                            createError.message.orEmpty().contains("email exists", true)
+                                        if (emailExists) {
+                                            auth.signInWithEmailAndPassword(email.trim(), password)
+                                                .addOnSuccessListener { credential ->
+                                                    val uid = credential.user?.uid
+                                                    if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                                    else persistCompanyAccount(uid)
+                                                }
+                                                .addOnFailureListener {
+                                                    loading = false
+                                                    error = "Este e-mail já possui uma conta Firebase. Entre com a senha dessa conta ou use a recuperação de senha no painel Web."
+                                                }
+                                        } else {
+                                            loading = false
+                                            error = "Não foi possível criar o acesso Firebase da empresa: ${createError.localizedMessage ?: "verifique a senha e a conexão"}"
+                                        }
+                                    }
+                            }.addOnFailureListener { e ->
+                                loading = false
+                                error = "Não foi possível consultar a autorização da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
                         }
-                    }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "SALVANDO..." else "CADASTRAR EMPRESA") }
             }
             Spacer(Modifier.height(8.dp))
@@ -1540,11 +1588,61 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 if (!android.util.Patterns.EMAIL_ADDRESS.matcher(loginEmail.trim()).matches() || loginPassword.isBlank()) { error = "Informe e-mail e senha."; return@Button }
                 ensureFirebase {
                     loading = true
-                    firestore.collection("companies").whereEqualTo("email", loginEmail.trim()).limit(20).get().addOnSuccessListener { snap ->
-                        val doc = snap.documents.filter { it.getBoolean("activated") == true }.maxByOrNull { it.getLong("createdAt") ?: 0L }
-                        if (doc == null || doc.getString("adminPasswordHash") != hashPassword(loginPassword)) { loading = false; error = "E-mail ou senha incorretos." }
-                        else { loadCompanyLocally(doc); loading = false; mode = "app"; error = "" }
-                    }.addOnFailureListener { e -> loading = false; error = e.localizedMessage ?: "Não foi possível recuperar a conta." }
+                    val normalizedEmail = loginEmail.trim()
+                    fun findActivatedCompany(onFound: (com.google.firebase.firestore.DocumentSnapshot?) -> Unit) {
+                        firestore.collection("companies").whereEqualTo("email", normalizedEmail).limit(20).get()
+                            .addOnSuccessListener { snap ->
+                                onFound(snap.documents.filter { it.getBoolean("activated") == true }
+                                    .maxByOrNull { it.getLong("createdAt") ?: 0L })
+                            }
+                            .addOnFailureListener { e ->
+                                loading = false
+                                error = "Não foi possível consultar a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
+                    }
+                    fun finishLogin(doc: com.google.firebase.firestore.DocumentSnapshot, uid: String) {
+                        doc.reference.set(mapOf("authUid" to uid), SetOptions.merge())
+                            .addOnSuccessListener {
+                                loadCompanyLocally(doc); loading = false; mode = "app"; error = ""
+                            }
+                            .addOnFailureListener { e ->
+                                loading = false
+                                error = "A senha foi aceita, mas não foi possível vincular a conta à empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
+                    }
+
+                    auth.signInWithEmailAndPassword(normalizedEmail, loginPassword)
+                        .addOnSuccessListener { credential ->
+                            val uid = credential.user?.uid
+                            if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                            else findActivatedCompany { doc ->
+                                if (doc == null) { loading = false; error = "A conta entrou, mas não há empresa ativa autorizada para este e-mail." }
+                                else finishLogin(doc, uid)
+                            }
+                        }
+                        .addOnFailureListener {
+                            // Migração gradual de contas antigas que só tinham hash no Firestore.
+                            findActivatedCompany { doc ->
+                                if (doc == null || doc.getString("adminPasswordHash") != hashPassword(loginPassword)) {
+                                    loading = false
+                                    error = "E-mail ou senha incorretos. Se a conta já foi criada no painel Web, use a senha do Firebase ou recupere-a pelo link de redefinição."
+                                } else {
+                                    auth.createUserWithEmailAndPassword(normalizedEmail, loginPassword)
+                                        .addOnSuccessListener { credential ->
+                                            val uid = credential.user?.uid
+                                            if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                            else finishLogin(doc, uid)
+                                        }
+                                        .addOnFailureListener { migrationError ->
+                                            loading = false
+                                            error = if (migrationError.message.orEmpty().contains("already in use", true) ||
+                                                migrationError.message.orEmpty().contains("email exists", true)) {
+                                                "Este e-mail já possui uma conta Firebase com outra senha. Use a recuperação de senha no painel Web."
+                                            } else "Não foi possível migrar o acesso antigo para Firebase Authentication: ${migrationError.localizedMessage ?: "erro no Firebase"}"
+                                        }
+                                }
+                            }
+                        }
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "ENTRANDO..." else "ENTRAR") }
         } else {
