@@ -76,7 +76,7 @@ window.addEventListener('error', () => { document.getElementById('authStatus').t
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,deleteUser,sendPasswordResetEmail,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import {getFirestore,collection,query,where,getDocs,getDoc,doc,setDoc,updateDoc,deleteDoc,limit} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import {getFirestore,collection,query,where,getDocs,getDoc,doc,setDoc,updateDoc,deleteDoc,limit,onSnapshot} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const firebaseConfig={apiKey:'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',authDomain:'agua-e-gas-express.firebaseapp.com',projectId:'agua-e-gas-express',storageBucket:'agua-e-gas-express.firebasestorage.app',messagingSenderId:'1071136912572'};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);const params=new URLSearchParams(location.search);
@@ -110,6 +110,7 @@ async function verifyAndOpen(user){
  $('companyStatus').textContent='Código: '+(verifiedCompany.companyCode||found.id)+' • E-mail autorizado: '+email;
  await loadCompanyConfig();
  await loadData(code);
+ startRealtimeSync(code);
  renderCompanyInfo();
 }
 async function loadData(code){
@@ -165,6 +166,35 @@ $('register').addEventListener('click',async()=>{try{const email=$('email').valu
 let companyConfigRef=null,companyConfig={},webProducts=[],webDrivers=['Entregador 1','Entregador 2','Entregador 3','Entregador 4','Entregador 5','Entregador 6'],editingWebProduct=-1;
 const webMoney=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const webEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let realtimeUnsubs=[],realtimeRefreshTimer=null;
+function startRealtimeSync(code){
+ realtimeUnsubs.forEach(unsubscribe=>{try{unsubscribe()}catch{}});
+ realtimeUnsubs=[];
+ const companyId=String(verifiedCompany?.id||code).trim();
+ const companyCode=String(verifiedCompany?.companyCode||code).trim().toUpperCase();
+ let refreshPending=false;
+ const scheduleRefresh=()=>{
+  if(refreshPending)return;
+  refreshPending=true;
+  realtimeRefreshTimer=setTimeout(async()=>{
+   refreshPending=false;
+   try{await loadData(code)}catch(error){console.error('Falha ao atualizar painel em tempo real:',error)}
+  },250);
+ };
+ const listen=(q,label)=>realtimeUnsubs.push(onSnapshot(q,scheduleRefresh,error=>{
+  console.error('Falha na sincronização em tempo real ('+label+'):',error);
+  status('Painel aberto, mas a atualização automática falhou ('+(error.code||'erro')+'). Atualize a página e confira a conexão.');
+ }));
+ // Keep the browser panel synchronized with writes from all APK profiles.
+ listen(query(collection(db,'orders'),where('companyId','==',companyId)),'pedidos por ID');
+ listen(query(collection(db,'orders'),where('companyId','==',companyCode)),'pedidos por código');
+ listen(query(collection(db,'orders'),where('companyCode','==',companyCode)),'pedidos por código da empresa');
+ listen(query(collection(db,'customers'),where('companyId','==',companyId)),'clientes por ID');
+ listen(query(collection(db,'customers'),where('companyId','==',companyCode)),'clientes por código');
+ listen(query(collection(db,'customers'),where('companyCode','==',companyCode)),'clientes por código da empresa');
+}
+
 async function loadCompanyConfig(){companyConfigRef=doc(db,'companies',verifiedCompany.id,'config','main');const s=await getDoc(companyConfigRef);companyConfig=s.exists()?s.data():{};try{const p=JSON.parse(companyConfig.productsJson||'[]');webProducts=Array.isArray(p)?p:[]}catch{webProducts=[]}webDrivers=Array.isArray(companyConfig.driverNames)?companyConfig.driverNames.slice(0,6):webDrivers;while(webDrivers.length<6)webDrivers.push('Entregador '+(webDrivers.length+1));$('pixKey').value=companyConfig.pixKey||'';$('pixKeyType').value=companyConfig.pixKeyType||'CPF';$('pixRecipientName').value=companyConfig.pixRecipientName||'';renderWebProducts();renderWebDrivers()}
 function renderWebProducts(){$('products').innerHTML=webProducts.length?webProducts.map((p,i)=>'<div class="item"><strong>'+webEsc(p.name)+'</strong><p class="small">'+(p.isGas?'🔥 Gás':'💧 Água')+' • '+webMoney(p.price)+'</p><div class="item-actions"><button class="secondary" data-edit-product="'+i+'">EDITAR</button><button class="secondary" data-delete-product="'+i+'">EXCLUIR</button></div></div>').join(''):'<div class="empty">Nenhum produto cadastrado. Adicione acima.</div>'}
 function renderWebDrivers(){$('driverFields').innerHTML=webDrivers.map((n,i)=>'<div><label for="driver-name-'+(i+1)+'">Entregador '+(i+1)+'</label><input id="driver-name-'+(i+1)+'" value="'+webEsc(n)+'"></div>').join('')}
