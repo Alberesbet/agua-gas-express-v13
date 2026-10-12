@@ -81,10 +81,13 @@ jobs:
           cp invite/empresa/index.html public/invite/empresa/index.html
           test -s public/invite/empresa/index.html
 
-      - name: Publicar link de convite no Firebase Hosting
+      - name: Publicar link de convite no Firebase Hosting (quando a credencial estiver configurada)
+        if: ${{ env.FIREBASE_SERVICE_ACCOUNT != '' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGUA_E_GAS_EXPRESS }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGUA_E_GAS_EXPRESS }}'
+          firebaseServiceAccount: ${{ env.FIREBASE_SERVICE_ACCOUNT }}
           projectId: agua-e-gas-express
           channelId: live
 
