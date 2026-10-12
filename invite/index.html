@@ -156,6 +156,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
        updatedAt:serverTimestamp()
     },{merge:true});
     document.getElementById('customerForm').classList.add('hidden');
+     actions.innerHTML='';
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora instale o aplicativo e toque em “JÁ FIZ O CADASTRO — ABRIR APLICATIVO”. Seus dados serão aproveitados, sem precisar cadastrar novamente.');
     msg.textContent='Cadastro concluído — abra o aplicativo para fazer pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
