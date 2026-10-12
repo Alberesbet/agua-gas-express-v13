@@ -75,7 +75,7 @@ window.addEventListener('error', () => { document.getElementById('authStatus').t
 </script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,deleteUser,sendPasswordResetEmail,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,deleteUser,sendPasswordResetEmail,sendEmailVerification,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {getFirestore,collection,query,where,getDocs,getDoc,doc,setDoc,updateDoc,deleteDoc,limit,onSnapshot} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const firebaseConfig={apiKey:'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',authDomain:'agua-e-gas-express.firebaseapp.com',projectId:'agua-e-gas-express',storageBucket:'agua-e-gas-express.firebasestorage.app',messagingSenderId:'1071136912572'};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
@@ -101,10 +101,30 @@ async function findCompany(code,email){
 async function verifyAndOpen(user){
  const code=$('company').value.trim().toUpperCase(),email=(user.email||$('email').value).trim().toLowerCase();
  if(!code)throw new Error('Informe o código da empresa enviado pelo Desenvolvedor.');
+ if(!user.emailVerified){
+  auth.languageCode='pt-BR';
+  await sendEmailVerification(user);
+  const error=new Error('A conta foi criada, mas ainda falta confirmar o e-mail. Abra o link enviado para '+email+' e depois volte a esta página para entrar.');
+  error.code='auth/email-not-verified';
+  throw error;
+ }
  status('Conferindo o código e o e-mail autorizado…');
  const found=await withTimeout(findCompany(code,email),15000,'A consulta ao cadastro da empresa demorou mais de 15 segundos. Verifique a conexão e as regras de leitura do Firestore. O acesso não foi confirmado; tente novamente.');
  if(!found)throw new Error('O código '+code+' e o e-mail '+email+' não foram encontrados juntos no cadastro do Desenvolvedor. Confira se o e-mail autorizado está exatamente igual, sem espaços ou erro de digitação.');
- verifiedCompany={id:found.id,...found.data()};
+ const companyData=found.data();
+ if(companyData.active===false)throw new Error('Esta empresa está desativada. Entre em contato com o Desenvolvedor.');
+ const permanent=companyData.licensePermanent===true;
+ const expiresAt=Number(companyData.licenseExpiresAt||0);
+ if(!permanent&&expiresAt>0&&Date.now()>expiresAt)throw new Error('A licença desta empresa expirou. Entre em contato com o Desenvolvedor.');
+ const existingAuthUid=String(companyData.authUid||'');
+ if(existingAuthUid && existingAuthUid!==user.uid)throw new Error('Esta empresa já está vinculada a outra conta de autenticação. Use a conta autorizada ou peça ao Desenvolvedor para revisar o vínculo.');
+ if(!existingAuthUid || companyData.activated!==true){
+  const patch={};
+  if(!existingAuthUid)patch.authUid=user.uid;
+  if(companyData.activated!==true){patch.activated=true;patch.companyActivatedAt=Date.now();}
+  await setDoc(doc(db,'companies',found.id),patch,{merge:true});
+ }
+ verifiedCompany={id:found.id,...companyData,authUid:user.uid,activated:true};
  $('authCard').classList.add('hidden');$('dashboard').classList.remove('hidden');
  $('welcome').textContent='Olá, '+safe(verifiedCompany.name||verifiedCompany.companyName||'Empresa')+'!';
  $('companyStatus').textContent='Código: '+(verifiedCompany.companyCode||found.id)+' • E-mail autorizado: '+email;
@@ -161,7 +181,7 @@ async function loadData(code){
 }
  $('forgotPassword').addEventListener('click',async()=>{try{const email=$('email').value.trim();if(!email)throw new Error('Digite primeiro o e-mail autorizado para receber o link de redefinição.');status('Enviando instruções para redefinir a senha…');auth.languageCode='pt-BR';await sendPasswordResetEmail(auth,email);status('Se este e-mail estiver cadastrado, você receberá uma mensagem para redefinir a senha. Confira a caixa de entrada e o spam. Depois, volte aqui e entre com a nova senha.')}catch(e){status('Não foi possível solicitar a redefinição: '+(e.code==='auth/invalid-email'?'confira o formato do e-mail.':e.message||e.code))}});
 $('login').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('password').value;if(!email||!password)throw new Error('Informe e-mail e senha.');status('Verificando acesso…');const c=await signInWithEmailAndPassword(auth,email,password);await verifyAndOpen(c.user)}catch(e){status('Não foi possível entrar: '+(e.code==='auth/invalid-credential'?'e-mail ou senha incorretos.':e.message||e.code))}});
-$('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('newPassword').value,repeat=$('repeatPassword').value,code=$('company').value.trim().toUpperCase();if(!code||!email)throw new Error('Informe o código da empresa e o e-mail autorizado.');if(password.length<6)throw new Error('A senha precisa ter pelo menos 6 caracteres.');if(password!==repeat)throw new Error('As senhas não conferem. Digite novamente.');status('Criando o acesso e validando a autorização…');let credential=null;try{credential=await createUserWithEmailAndPassword(auth,email,password);status('Acesso criado. Conferindo agora o código e o e-mail autorizado…');const found=await withTimeout(findCompany(code,email),15000,'A consulta ao cadastro da empresa demorou mais de 15 segundos. Verifique a conexão e as regras de leitura do Firestore.');if(!found){await deleteUser(credential.user);credential=null;throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. O acesso recém-criado foi removido. Confira os dados e peça ao Desenvolvedor para confirmar o e-mail autorizado.')}verifiedCompany={id:found.id,...found.data()};await verifyAndOpen(credential.user);status('Acesso criado e empresa confirmada.')}catch(e){if(e.code==='auth/email-already-in-use'){status('Este e-mail já tem uma conta no Firebase. Enviando um link para redefinir a senha…');auth.languageCode='pt-BR';await sendPasswordResetEmail(auth,email);status('Este e-mail já estava cadastrado. Enviamos um link para criar uma nova senha. Abra o e-mail (confira também o spam), redefina a senha e depois volte aqui para ENTRAR NA EMPRESA. Nenhuma conta existente foi apagada.');return}if(credential&&auth.currentUser&&auth.currentUser.uid===credential.user.uid){try{await deleteUser(credential.user)}catch(cleanupError){console.error('Não foi possível remover o acesso temporário:',cleanupError)}}throw e}}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/invalid-email'?'Confira o formato do e-mail.':e.message||e.code))}});
+$('register').addEventListener('click',async()=>{try{const email=$('email').value.trim(),password=$('newPassword').value,repeat=$('repeatPassword').value,code=$('company').value.trim().toUpperCase();if(!code||!email)throw new Error('Informe o código da empresa e o e-mail autorizado.');if(password.length<6)throw new Error('A senha precisa ter pelo menos 6 caracteres.');if(password!==repeat)throw new Error('As senhas não conferem. Digite novamente.');status('Criando o acesso e validando a autorização…');let credential=null;try{credential=await createUserWithEmailAndPassword(auth,email,password);status('Acesso criado. Conferindo agora o código e o e-mail autorizado…');const found=await withTimeout(findCompany(code,email),15000,'A consulta ao cadastro da empresa demorou mais de 15 segundos. Verifique a conexão e as regras de leitura do Firestore.');if(!found){await deleteUser(credential.user);credential=null;throw new Error('Esse código e e-mail não correspondem a uma empresa autorizada. O acesso recém-criado foi removido. Confira os dados e peça ao Desenvolvedor para confirmar o e-mail autorizado.')}verifiedCompany={id:found.id,...found.data()};await verifyAndOpen(credential.user);status('Acesso criado e empresa confirmada.')}catch(e){if(e.code==='auth/email-not-verified'){status(e.message||'Confirme seu e-mail pelo link enviado e depois volte para entrar.');return}if(e.code==='auth/email-already-in-use'){status('Este e-mail já tem uma conta no Firebase. Enviando um link para redefinir a senha…');auth.languageCode='pt-BR';await sendPasswordResetEmail(auth,email);status('Este e-mail já estava cadastrado. Enviamos um link para criar uma nova senha. Abra o e-mail (confira também o spam), redefina a senha e depois volte aqui para ENTRAR NA EMPRESA. Nenhuma conta existente foi apagada.');return}if(credential&&auth.currentUser&&auth.currentUser.uid===credential.user.uid){try{await deleteUser(credential.user)}catch(cleanupError){console.error('Não foi possível remover o acesso temporário:',cleanupError)}}throw e}}catch(e){status('Não foi possível criar o acesso: '+(e.code==='auth/invalid-email'?'Confira o formato do e-mail.':e.message||e.code))}});
 
 let companyConfigRef=null,companyConfig={},webProducts=[],webDrivers=['Entregador 1','Entregador 2','Entregador 3','Entregador 4','Entregador 5','Entregador 6'],editingWebProduct=-1;
 const webMoney=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});

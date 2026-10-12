@@ -1,0 +1,36 @@
+name: APKs de teste
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compilar APKs de depuração
+        run: chmod +x ./gradlew && ./gradlew --no-daemon assembleAllProfilesDebug
+      - name: Publicar APKs para teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: AguaGasExpress-APKs-teste
+          path: |
+            app/build/outputs/apk/desenvolvedor/debug/*.apk
+            app/build/outputs/apk/empresa/debug/*.apk
+            app/build/outputs/apk/cliente/debug/*.apk
+            app/build/outputs/apk/entregador/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

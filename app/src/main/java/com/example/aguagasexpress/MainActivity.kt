@@ -134,7 +134,8 @@ private fun normalizeCompanyCode(value: String): String =
     value.trim().uppercase(Locale.ROOT).filter { it.isLetterOrDigit() }.take(12)
 
 private fun generateCompanyCode(): String =
-    UUID.randomUUID().toString().replace("-", "").take(6).uppercase(Locale.ROOT)
+    // Oito caracteres ampliam o espaço de códigos; a criação ainda confere colisões no Firestore.
+    UUID.randomUUID().toString().replace("-", "").take(8).uppercase(Locale.ROOT)
 
 private fun generateCommercialLicenseKey(): String {
     val raw = UUID.randomUUID().toString().replace("-", "").uppercase(Locale.ROOT)
@@ -1420,13 +1421,45 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             OutlinedTextField(email, { email = it }, label = { Text("E-mail autorizado pela empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Button(enabled = !loading, onClick = {
-                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) { error = "Informe um e-mail válido."; return@Button }
+                val normalizedEmail = email.trim()
+                val normalizedCode = normalizeCompanyCode(invitedCode)
+                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) { error = "Informe um e-mail válido."; return@Button }
+                if (normalizedCode.isBlank()) { error = "Este convite está sem o código da empresa. Solicite um novo link ao Desenvolvedor."; return@Button }
                 ensureFirebase {
-                    firestore.collection("companies").whereEqualTo("email", email.trim()).limit(20).get().addOnSuccessListener { snap ->
-                        val doc = snap.documents.filter { !(it.getBoolean("activated") ?: false) }.maxByOrNull { it.getLong("createdAt") ?: 0L }
-                        if (doc == null) error = "Este e-mail ainda não foi autorizado pelo proprietário."
-                        else { prefs.edit().putString("invite_company_code", doc.getString("companyCode") ?: "").putString("pending_company_id", doc.id).apply(); companyEmailVerified = true; mode = "register"; error = "" }
-                    }.addOnFailureListener { e -> error = e.localizedMessage ?: "Não foi possível consultar a autorização." }
+                    loading = true
+                    firestore.collection("companies").whereEqualTo("companyCode", normalizedCode).limit(2).get().addOnSuccessListener { snap ->
+                        val doc = snap.documents.firstOrNull()
+                        val authorizedEmailMatches = doc?.getString("email")?.equals(normalizedEmail, ignoreCase = true) == true
+                        if (doc == null || !authorizedEmailMatches) {
+                            loading = false
+                            error = "O código deste convite e o e-mail informado não correspondem à mesma empresa autorizada."
+                        } else if (doc.getBoolean("active") == false) {
+                            loading = false
+                            error = "Esta empresa está desativada. Solicite suporte ao Desenvolvedor."
+                        } else {
+                            val permanent = doc.getBoolean("licensePermanent") ?: false
+                            val expiry = doc.getLong("licenseExpiresAt") ?: 0L
+                            if (!permanent && expiry > 0L && System.currentTimeMillis() > expiry) {
+                                loading = false
+                                error = "A licença desta empresa expirou. Solicite suporte ao Desenvolvedor."
+                            } else if (doc.getBoolean("activated") == true) {
+                                loading = false
+                                loginEmail = normalizedEmail
+                                mode = "login"
+                                error = "Esta empresa já possui acesso cadastrado. Entre com o e-mail e a senha existentes."
+                            } else {
+                                prefs.edit().putString("invite_company_code", normalizedCode)
+                                    .putString("pending_company_id", doc.id).apply()
+                                companyEmailVerified = true
+                                mode = "register"
+                                loading = false
+                                error = ""
+                            }
+                        }
+                    }.addOnFailureListener { e ->
+                        loading = false
+                        error = e.localizedMessage ?: "Não foi possível consultar a autorização."
+                    }
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CONSULTANDO..." else "CONTINUAR COM ESTE E-MAIL") }
         } else if (mode == "register") {
@@ -1454,20 +1487,55 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         masterCompanyPhone.filter(Char::isDigit).length < 8 -> { error = "Informe um telefone válido."; return@Button }
                     }
                     ensureFirebase {
-                        val code = generateCompanyCode(); val now = System.currentTimeMillis(); val permanent = masterPermanent; val days = trialDays.toIntOrNull() ?: 30; val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L; val id = UUID.randomUUID().toString(); val license = generateCommercialLicenseKey()
                         val uid = auth.currentUser?.uid
                         if (uid.isNullOrBlank()) { loading = false; error = "Firebase Auth ainda não está autenticado. Tente novamente após ativar o login anônimo no Firebase."; return@ensureFirebase }
-                        val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
-                                "appVersion" to "12.0-test")
-                        firestore.collection("companies").document(id).set(data).addOnSuccessListener {
-                            masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
-                            // Atualiza a lista imediatamente após salvar, sem depender de fechar e reabrir o aplicativo.
-                            firestore.collection("companies").get().addOnSuccessListener { snap ->
-                                masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
-                            }.addOnFailureListener { e ->
-                                masterStatus = "Empresa cadastrada, mas a lista não atualizou: ${e.localizedMessage ?: "erro ao atualizar"}"
+                        loading = true
+
+                        // Confere o código antes de gravar para evitar reutilizar um código já cadastrado.
+                        // O mesmo companyCode permanece sendo usado nos links de empresa, cliente e entregador.
+                        fun createCompanyWithUniqueCode(attempt: Int) {
+                            if (attempt >= 5) {
+                                loading = false
+                                error = "Não foi possível gerar um código exclusivo agora. Tente novamente."
+                                return
                             }
-                        }.addOnFailureListener { e -> loading = false; error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}" }
+                            val code = generateCompanyCode()
+                            firestore.collection("companies")
+                                .whereEqualTo("companyCode", code)
+                                .limit(1)
+                                .get()
+                                .addOnSuccessListener { matches ->
+                                    if (!matches.isEmpty) {
+                                        createCompanyWithUniqueCode(attempt + 1)
+                                        return@addOnSuccessListener
+                                    }
+                                    val now = System.currentTimeMillis()
+                                    val permanent = masterPermanent
+                                    val days = trialDays.toIntOrNull() ?: 30
+                                    val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L
+                                    val id = UUID.randomUUID().toString()
+                                    val license = generateCommercialLicenseKey()
+                                    val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
+                                        "appVersion" to "12.0-test")
+                                    firestore.collection("companies").document(id).set(data).addOnSuccessListener {
+                                        masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
+                                        // Atualiza a lista imediatamente após salvar, sem depender de fechar e reabrir o aplicativo.
+                                        firestore.collection("companies").get().addOnSuccessListener { snap ->
+                                            masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                                        }.addOnFailureListener { e ->
+                                            masterStatus = "Empresa cadastrada, mas a lista não atualizou: ${e.localizedMessage ?: "erro ao atualizar"}"
+                                        }
+                                    }.addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    loading = false
+                                    error = "Não foi possível verificar se o código está livre: ${e.localizedMessage ?: "erro no Firebase"}"
+                                }
+                        }
+                        createCompanyWithUniqueCode(0)
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CADASTRANDO..." else "CADASTRAR EMPRESA") }
             } else {
@@ -1504,24 +1572,114 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             loading = true
                             val pendingId = prefs.getString("pending_company_id", "").orEmpty()
                             firestore.collection("companies").document(pendingId).get().addOnSuccessListener { doc ->
-                                if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) { loading = false; error = "Autorização da empresa não encontrada."; return@addOnSuccessListener }
-                                val permanent = doc.getBoolean("licensePermanent") ?: false; val expiry = doc.getLong("licenseExpiresAt") ?: 0L; val code = doc.getString("companyCode") ?: generateCompanyCode(); val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState").filter { it.isNotBlank() }.joinToString(" — ")
-                                val updated = mapOf("name" to companyName.trim(), "responsible" to responsible.trim(), "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(), "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(), "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(), "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(), "adminPasswordHash" to hashPassword(password), "originAddress" to origin, "activated" to true, "active" to true, "companyActivatedAt" to System.currentTimeMillis())
-                                firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge()).addOnSuccessListener {
-                                    saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
-                                    prefs.edit().putString("company_responsible", responsible.trim()).putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password)).putString("company_role", "admin").putBoolean("company_authenticated", true).putBoolean("company_just_registered", true).remove("pending_company_id").remove("invite_profile").remove("invite_company_code").apply()
-                                    loading = false; mode = "app"; error = ""
-                                }.addOnFailureListener { e ->
+                                if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) {
                                     loading = false
-                                    val details = e.localizedMessage ?: "erro no Firebase"
-                                    error = if (details.contains("permission", ignoreCase = true) ||
-                                        details.contains("insufficient permissions", ignoreCase = true)) {
-                                        "ETAPA 2/2 — A autorização foi localizada, mas o Firebase negou salvar os dados da empresa. Confira se as regras publicadas são do mesmo projeto Firebase usado por este APK. Detalhe: $details"
-                                    } else {
-                                        "Não foi possível salvar a empresa: $details"
+                                    error = "Autorização da empresa não encontrada."
+                                    return@addOnSuccessListener
+                                }
+                                val permanent = doc.getBoolean("licensePermanent") ?: false
+                                val expiry = doc.getLong("licenseExpiresAt") ?: 0L
+                                val code = doc.getString("companyCode") ?: generateCompanyCode()
+                                val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState")
+                                    .filter { it.isNotBlank() }.joinToString(" — ")
+
+                                fun persistCompanyAccount(uid: String) {
+                                    val currentUser = auth.currentUser
+                                    if (currentUser == null || currentUser.uid != uid) {
+                                        loading = false
+                                        error = "A sessão Firebase mudou durante o cadastro. Entre novamente."
+                                        return
+                                    }
+                                    // Só permitir ativação depois que a pessoa comprovar que controla o e-mail autorizado.
+                                    currentUser.reload().addOnSuccessListener reloadCompanyUser@ {
+                                        val verifiedUser = auth.currentUser
+                                        if (verifiedUser == null || verifiedUser.uid != uid) {
+                                            loading = false
+                                            error = "A sessão Firebase mudou durante a verificação."
+                                            return@reloadCompanyUser
+                                        }
+                                        if (!verifiedUser.isEmailVerified) {
+                                            verifiedUser.sendEmailVerification()
+                                                .addOnSuccessListener {
+                                                    loading = false
+                                                    error = "Enviamos um link de confirmação para o e-mail da empresa. Confirme o endereço e depois entre novamente para concluir o cadastro."
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    loading = false
+                                                    error = "Não foi possível enviar a confirmação de e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
+                                                }
+                                            return@reloadCompanyUser
+                                        }
+                                        val existingAuthUid = doc.getString("authUid").orEmpty()
+                                        if (existingAuthUid.isNotBlank() && existingAuthUid != uid) {
+                                            loading = false
+                                            error = "Esta empresa já está vinculada a outra conta Firebase. Solicite a revisão do acesso ao Desenvolvedor."
+                                            return@reloadCompanyUser
+                                        }
+                                        if (doc.getBoolean("activated") == true && existingAuthUid.isBlank()) {
+                                            loading = false
+                                            error = "Esta empresa já foi ativada por outra conta. Entre pelo login da empresa."
+                                            return@reloadCompanyUser
+                                        }
+                                        val updated = mapOf(
+                                            "name" to companyName.trim(), "responsible" to responsible.trim(),
+                                            "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(),
+                                            "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(),
+                                            "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(),
+                                            "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(),
+                                            "authUid" to uid, "adminPasswordHash" to hashPassword(password),
+                                            "originAddress" to origin, "activated" to true, "active" to true,
+                                            "companyActivatedAt" to System.currentTimeMillis()
+                                        )
+                                        firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge())
+                                            .addOnSuccessListener {
+                                                saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
+                                                prefs.edit().putString("company_responsible", responsible.trim())
+                                                    .putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password))
+                                                    .putString("company_role", "admin").putBoolean("company_authenticated", true)
+                                                    .putBoolean("company_just_registered", true).remove("pending_company_id")
+                                                    .remove("invite_profile").remove("invite_company_code").apply()
+                                                loading = false; mode = "app"; error = ""
+                                            }
+                                            .addOnFailureListener { e ->
+                                                loading = false
+                                                error = "A conta foi autenticada, mas não foi possível salvar os dados da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                            }
+                                    }.addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Não foi possível confirmar o estado do e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
                                     }
                                 }
-                            }.addOnFailureListener { e -> loading = false; error = "ETAPA 1/2 — O Firebase negou a leitura da autorização da empresa antes de salvar o cadastro. Confira se as regras publicadas correspondem ao projeto Firebase usado por este APK. Detalhe: ${e.localizedMessage ?: "erro ao consultar autorização"}" }
+
+                                auth.createUserWithEmailAndPassword(email.trim(), password)
+                                    .addOnSuccessListener { credential ->
+                                        val uid = credential.user?.uid
+                                        if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                        else persistCompanyAccount(uid)
+                                    }
+                                    .addOnFailureListener { createError ->
+                                        val emailExists = createError.message.orEmpty().contains("already in use", true) ||
+                                            createError.message.orEmpty().contains("email exists", true)
+                                        if (emailExists) {
+                                            auth.signInWithEmailAndPassword(email.trim(), password)
+                                                .addOnSuccessListener { credential ->
+                                                    val uid = credential.user?.uid
+                                                    if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                                    else persistCompanyAccount(uid)
+                                                }
+                                                .addOnFailureListener {
+                                                    loading = false
+                                                    error = "Este e-mail já possui uma conta Firebase. Entre com a senha dessa conta ou use a recuperação de senha no painel Web."
+                                                }
+                                        } else {
+                                            loading = false
+                                            error = "Não foi possível criar o acesso Firebase da empresa: ${createError.localizedMessage ?: "verifique a senha e a conexão"}"
+                                        }
+                                    }
+                            }.addOnFailureListener { e ->
+                                loading = false
+                                error = "Não foi possível consultar a autorização da empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
                         }
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "SALVANDO..." else "CADASTRAR EMPRESA") }
@@ -1540,11 +1698,96 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 if (!android.util.Patterns.EMAIL_ADDRESS.matcher(loginEmail.trim()).matches() || loginPassword.isBlank()) { error = "Informe e-mail e senha."; return@Button }
                 ensureFirebase {
                     loading = true
-                    firestore.collection("companies").whereEqualTo("email", loginEmail.trim()).limit(20).get().addOnSuccessListener { snap ->
-                        val doc = snap.documents.filter { it.getBoolean("activated") == true }.maxByOrNull { it.getLong("createdAt") ?: 0L }
-                        if (doc == null || doc.getString("adminPasswordHash") != hashPassword(loginPassword)) { loading = false; error = "E-mail ou senha incorretos." }
-                        else { loadCompanyLocally(doc); loading = false; mode = "app"; error = "" }
-                    }.addOnFailureListener { e -> loading = false; error = e.localizedMessage ?: "Não foi possível recuperar a conta." }
+                    val normalizedEmail = loginEmail.trim()
+                    fun findActivatedCompany(onFound: (com.google.firebase.firestore.DocumentSnapshot?) -> Unit) {
+                        firestore.collection("companies").whereEqualTo("email", normalizedEmail).limit(20).get()
+                            .addOnSuccessListener { snap ->
+                                onFound(snap.documents.filter { it.getBoolean("activated") == true }
+                                    .maxByOrNull { it.getLong("createdAt") ?: 0L })
+                            }
+                            .addOnFailureListener { e ->
+                                loading = false
+                                error = "Não foi possível consultar a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                            }
+                    }
+                    fun finishLogin(doc: com.google.firebase.firestore.DocumentSnapshot, uid: String) {
+                        val currentUser = auth.currentUser
+                        if (currentUser == null || currentUser.uid != uid) {
+                            loading = false
+                            error = "A sessão Firebase mudou durante o login. Tente novamente."
+                            return
+                        }
+                        currentUser.reload().addOnSuccessListener reloadLoginUser@ {
+                            val verifiedUser = auth.currentUser
+                            if (verifiedUser == null || verifiedUser.uid != uid) {
+                                loading = false
+                                error = "A sessão Firebase mudou durante a verificação."
+                                return@reloadLoginUser
+                            }
+                            if (!verifiedUser.isEmailVerified) {
+                                verifiedUser.sendEmailVerification()
+                                    .addOnSuccessListener {
+                                        loading = false
+                                        error = "Seu e-mail ainda não foi confirmado. Enviamos um link de confirmação; abra-o e depois entre novamente."
+                                    }
+                                    .addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Seu e-mail ainda não foi confirmado e não foi possível reenviar o link: ${e.localizedMessage ?: "erro no Firebase"}"
+                                    }
+                                return@reloadLoginUser
+                            }
+                            val existingAuthUid = doc.getString("authUid").orEmpty()
+                            if (existingAuthUid.isNotBlank() && existingAuthUid != uid) {
+                                loading = false
+                                error = "Esta empresa já está vinculada a outra conta Firebase. Solicite a revisão do acesso ao Desenvolvedor."
+                                return@reloadLoginUser
+                            }
+                            doc.reference.set(mapOf("authUid" to uid), SetOptions.merge())
+                                .addOnSuccessListener {
+                                    loadCompanyLocally(doc); loading = false; mode = "app"; error = ""
+                                }
+                                .addOnFailureListener { e ->
+                                    loading = false
+                                    error = "A senha foi aceita, mas não foi possível vincular a conta à empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                }
+                        }.addOnFailureListener { e ->
+                            loading = false
+                            error = "Não foi possível confirmar o estado do e-mail: ${e.localizedMessage ?: "erro no Firebase"}"
+                        }
+                    }
+
+                    auth.signInWithEmailAndPassword(normalizedEmail, loginPassword)
+                        .addOnSuccessListener { credential ->
+                            val uid = credential.user?.uid
+                            if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                            else findActivatedCompany { doc ->
+                                if (doc == null) { loading = false; error = "A conta entrou, mas não há empresa ativa autorizada para este e-mail." }
+                                else finishLogin(doc, uid)
+                            }
+                        }
+                        .addOnFailureListener {
+                            // Migração gradual de contas antigas que só tinham hash no Firestore.
+                            findActivatedCompany { doc ->
+                                if (doc == null || doc.getString("adminPasswordHash") != hashPassword(loginPassword)) {
+                                    loading = false
+                                    error = "E-mail ou senha incorretos. Se a conta já foi criada no painel Web, use a senha do Firebase ou recupere-a pelo link de redefinição."
+                                } else {
+                                    auth.createUserWithEmailAndPassword(normalizedEmail, loginPassword)
+                                        .addOnSuccessListener { credential ->
+                                            val uid = credential.user?.uid
+                                            if (uid.isNullOrBlank()) { loading = false; error = "O Firebase não retornou o identificador da conta." }
+                                            else finishLogin(doc, uid)
+                                        }
+                                        .addOnFailureListener { migrationError ->
+                                            loading = false
+                                            error = if (migrationError.message.orEmpty().contains("already in use", true) ||
+                                                migrationError.message.orEmpty().contains("email exists", true)) {
+                                                "Este e-mail já possui uma conta Firebase com outra senha. Use a recuperação de senha no painel Web."
+                                            } else "Não foi possível migrar o acesso antigo para Firebase Authentication: ${migrationError.localizedMessage ?: "erro no Firebase"}"
+                                        }
+                                }
+                            }
+                        }
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "ENTRANDO..." else "ENTRAR") }
         } else {
@@ -1749,7 +1992,16 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
-    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "choice") }
+    var customerAccessMode by remember {
+        mutableStateOf(
+            when {
+                prefs.getBoolean("client_profile_saved", false) -> "orders"
+                prefs.getString("invite_profile", "").equals("cliente", ignoreCase = true) &&
+                    !prefs.getString("invite_company_code", "").isNullOrBlank() -> "register"
+                else -> "choice"
+            }
+        )
+    }
     var customerLoginPhone by remember { mutableStateOf("") }
     var customerAccessLoading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -2383,7 +2635,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
 
             Page.CUSTOMER -> {
-                Header("Faça seu pedido", "🛍️")
+                Header(
+                    if (!clientProfileSaved && customerAccessMode == "register") "Fazer cadastro" else "Faça seu pedido",
+                    "🛍️"
+                )
                 if (!clientProfileSaved && customerAccessMode == "choice") {
                     Text("Você já tem cadastro?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(14.dp))
@@ -2477,19 +2732,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val parts = listOf(result.optString("logradouro"), result.optString("bairro"), listOf(result.optString("localidade"), result.optString("uf")).filter { it.isNotBlank() }.joinToString(" - "))
                                     .filter { it.isNotBlank() && it != "null" }
                                 clientAddress = parts.joinToString(", ")
-                                message = if (clientAddress.isBlank()) "CEP localizado. Preencha o endereço manualmente." else "Endereço localizado. Informe o número da casa abaixo."
+                                message = ""
                             }
                         }
                     }
                     if (cepSearching) Text("Pesquisando CEP…", color = LightBlue, fontSize = 12.sp)
                     if (clientAddress.isNotBlank()) {
-                        Text("Endereço encontrado pelo CEP", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO E CONTINUAR") {
+                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2502,10 +2756,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
                                 val customerRef = firestore.collection("customers").document(customerDocumentId(digits))
-                                fun saveRegistration(uid: String) {
+                                fun persistCustomer(uid: String, resolvedCompanyId: String, resolvedCompanyCode: String) {
+                                    if (resolvedCompanyId.isBlank() || resolvedCompanyCode.isBlank()) {
+                                        customerAccessLoading = false
+                                        message = "Não foi possível vincular este cadastro à empresa. Abra novamente o convite enviado pela empresa."
+                                        return
+                                    }
                                     val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
-                                    val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
-                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("company_code", "").orEmpty() })
                                     customerRef.set(mapOf(
                                         "uid" to uid,
                                         "name" to clientName.trim(),
@@ -2517,13 +2774,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "companyId" to resolvedCompanyId,
                                         "companyCode" to resolvedCompanyCode,
                                         "active" to true,
+                                        "registrationSource" to "android-invite",
                                         "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                     ), SetOptions.merge())
                                         .addOnSuccessListener {
                                             customerAccessLoading = false
                                             clientProfileSaved = true
                                             customerAccessMode = "orders"
-                                            prefs.edit().putString("client_name", clientName.trim())
+                                            companyId = resolvedCompanyId
+                                            prefs.edit()
+                                                .putString("company_id", resolvedCompanyId)
+                                                .putString("company_code", resolvedCompanyCode)
+                                                .putString("client_name", clientName.trim())
                                                 .putString("client_phone", clientPhone.trim())
                                                 .putString("client_doc_type", clientDocType)
                                                 .putString("client_doc_number", normalizeDocument(clientDocNumber))
@@ -2536,7 +2798,51 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         }
                                         .addOnFailureListener { e ->
                                             customerAccessLoading = false
-                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}. O cadastro não foi concluído."
+                                        }
+                                }
+                                fun saveRegistration(uid: String) {
+                                    val resolvedCompanyCode = normalizeCompanyCode(
+                                        invitedCompanyCode.ifBlank {
+                                            prefs.getString("invite_company_code", "").orEmpty()
+                                        }.ifBlank { prefs.getString("company_code", "").orEmpty() }
+                                    )
+                                    val knownCompanyId = companyId.ifBlank {
+                                        prefs.getString("pending_company_id", "").orEmpty()
+                                    }.ifBlank { prefs.getString("company_id", "").orEmpty() }
+                                    if (resolvedCompanyCode.isBlank()) {
+                                        customerAccessLoading = false
+                                        message = "O convite não contém o código da empresa. Peça à empresa para enviar o link novamente."
+                                        return
+                                    }
+                                    if (knownCompanyId.isNotBlank()) {
+                                        persistCustomer(uid, knownCompanyId, resolvedCompanyCode)
+                                        return
+                                    }
+                                    // Não gravar um cliente órfão com companyId vazio: resolver o código antes de salvar.
+                                    firestore.collection("companies")
+                                        .whereEqualTo("companyCode", resolvedCompanyCode)
+                                        .limit(1)
+                                        .get()
+                                        .addOnSuccessListener { companies ->
+                                            val company = companies.documents.firstOrNull()
+                                            if (company == null || company.getBoolean("active") == false) {
+                                                customerAccessLoading = false
+                                                message = "Não foi possível encontrar uma empresa ativa com este convite. Peça um novo link à empresa."
+                                            } else {
+                                                companyId = company.id
+                                                companyName = company.getString("name") ?: "Empresa"
+                                                prefs.edit()
+                                                    .putString("company_id", company.id)
+                                                    .putString("company_name", companyName)
+                                                    .putString("company_code", company.getString("companyCode") ?: resolvedCompanyCode)
+                                                    .apply()
+                                                persistCustomer(uid, company.id, company.getString("companyCode") ?: resolvedCompanyCode)
+                                            }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            customerAccessLoading = false
+                                            message = "Falha ao validar o convite: ${e.localizedMessage ?: "verifique a internet"}. O cadastro não foi concluído."
                                         }
                                 }
                                 fun checkDuplicate(uid: String) {
@@ -2571,8 +2877,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    if (!prefs.getString("invite_profile", "").equals("cliente", ignoreCase = true) ||
+                        prefs.getString("invite_company_code", "").isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    }
                     ErrorText(message)
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
