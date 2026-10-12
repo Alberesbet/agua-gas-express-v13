@@ -80,6 +80,38 @@ function addButton(label, href, secondary=false){
 }
 function showStatus(text){status.textContent=text;status.classList.remove('hidden')}
 function digits(value){return value.replace(/\D/g,'')}
+let cepTimer=null;
+async function searchCep(){
+  const field=document.getElementById('cep');
+  const cep=digits(field.value);
+  if(cep.length!==8)return;
+  field.disabled=true;
+  field.setCustomValidity('');
+  document.getElementById('address').placeholder='Pesquisando endereço pelo CEP...';
+  try{
+    const response=await fetch('https://viacep.com.br/ws/'+cep+'/json/');
+    if(!response.ok)throw new Error('Falha na consulta');
+    const data=await response.json();
+    if(data.erro)throw new Error('CEP não encontrado');
+    const street=document.getElementById('address');
+    const parts=[data.logradouro,data.bairro].filter(Boolean);
+    street.value=parts.join(', ');
+    if(!document.getElementById('number').value)document.getElementById('number').focus();
+    showStatus('CEP localizado. Confira o endereço e informe o número da casa.');
+  }catch(error){
+    showStatus('Não foi possível localizar esse CEP automaticamente. Confira o CEP e preencha o endereço manualmente.');
+  }finally{
+    field.disabled=false;
+    document.getElementById('address').placeholder='Rua / endereço';
+  }
+}
+document.getElementById('cep').addEventListener('input',event=>{
+  const field=event.target;
+  const value=digits(field.value).slice(0,8);
+  field.value=value.length>5?value.slice(0,5)+'-'+value.slice(5):value;
+  clearTimeout(cepTimer);
+  if(value.length===8)cepTimer=setTimeout(searchCep,250);
+});
 function normalizeDoc(value){return digits(value).slice(0,14)}
 async function customerDocId(phone){
   const data=new TextEncoder().encode(digits(phone));
