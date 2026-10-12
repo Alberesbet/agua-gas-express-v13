@@ -44,7 +44,7 @@ a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
@@ -121,20 +121,15 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Aplicativo do Cliente';
+  title.textContent='Cadastro do Cliente';
   if(!empresa){
     msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
     showStatus('Não foi possível identificar a empresa neste convite.');
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Primeiro baixe o aplicativo do Cliente. Depois volte a esta página, preencha o cadastro e toque em concluir. O botão final abrirá o aplicativo para você fazer pedidos.';
-    const downloadButton=addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    downloadButton.addEventListener('click',()=>{
-      registration.classList.remove('hidden');
-      info.textContent='Depois de iniciar o download, volte para esta página e preencha seus dados. Ao concluir, toque em ABRIR APLICATIVO para entrar na tela de pedidos.';
-      msg.textContent='Aplicativo do Cliente: download iniciado. Agora preencha o cadastro abaixo.';
-    });
-    addButton('ABRIR PÁGINA ALTERNATIVA DE DOWNLOAD',releasePage,true);
-    info.textContent='Toque primeiro em BAIXAR APLICATIVO DO CLIENTE. Depois volte aqui para preencher o cadastro e abrir o aplicativo.';
+    msg.textContent='Convite da empresa '+empresa+'. Preencha o cadastro abaixo sem precisar instalar o aplicativo primeiro. Depois você poderá baixar o app para fazer pedidos.';
+    registration.classList.remove('hidden');
+    addButton('BAIXAR APLICATIVO DO CLIENTE',apk,true);
+    info.textContent='O cadastro será enviado para a empresa pelo link. Depois, instale o aplicativo para fazer pedidos.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
@@ -178,17 +173,23 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     const credential=await signInAnonymously(auth);
     const uid=credential.user.uid;
     const address=street+', '+number;
+    // Resolve o código do convite para o ID real da empresa usado pelo painel.
+    const companySnapshot=await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(1)));
+    const companyDoc=companySnapshot.docs[0];
+    if(!companyDoc || companyDoc.data()?.active===false){
+      throw new Error('Empresa não encontrada ou desativada. Peça à empresa um novo convite.');
+    }
+    const companyId=companyDoc.id;
     const id=await customerDocId(phone);
     await setDoc(doc(db,'customers',id),{
       uid,name,phone,documentType:docType,documentNumber,cep,address,active:true,
-      companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
-      street,houseNumber:number,
-       updatedAt:serverTimestamp()
+      companyId,companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
+      street,houseNumber:number,updatedAt:serverTimestamp()
     },{merge:true});
     document.getElementById('customerForm').classList.add('hidden');
      actions.innerHTML='';
-    showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Toque em ABRIR APLICATIVO para entrar na tela de pedidos. Seus dados serão aproveitados no aplicativo.');
-    msg.textContent='Cadastro concluído — toque abaixo para abrir o aplicativo e fazer seu pedido.';
+    showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora você pode instalar o aplicativo do Cliente para fazer pedidos.');
+    msg.textContent='Cadastro concluído — agora você pode baixar o aplicativo para fazer seu pedido.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
     addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
