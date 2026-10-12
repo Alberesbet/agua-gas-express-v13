@@ -1,277 +1,77 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Água &amp; Gás Express — Empresa</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      padding: 20px;
-      background: #f1f5f9;
-      color: #172033;
-      font-family: Arial, sans-serif;
-    }
-
-    main {
-      width: 100%;
-      max-width: 650px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 26px;
-    }
-
-    .card {
-      margin: 18px 0;
-      padding: 20px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px #00000012;
-    }
-
-    h2 {
-      margin-top: 0;
-      font-size: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-    }
-
-    input {
-      width: 100%;
-      padding: 13px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 16px;
-      text-transform: uppercase;
-    }
-
-    button,
-    a.button {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-      padding: 14px 12px;
-      border: 0;
-      border-radius: 8px;
-      background: #087443;
-      color: #ffffff;
-      font-size: 15px;
-      font-weight: bold;
-      text-align: center;
-      text-decoration: none;
-      cursor: pointer;
-      overflow-wrap: anywhere;
-    }
-
-    a.secondary,
-    button.secondary {
-      background: #174ea6;
-    }
-
-    .info {
-      color: #475569;
-      line-height: 1.5;
-    }
-
-    .link-text {
-      padding: 10px;
-      background: #f1f5f9;
-      border-radius: 6px;
-      overflow-wrap: anywhere;
-      font-size: 13px;
-    }
-
-    #status {
-      margin-top: 12px;
-      font-weight: bold;
-      overflow-wrap: anywhere;
-    }
-
-    .small {
-      color: #64748b;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1730">
+<title>Água & Gás Express | Painel da Empresa</title>
+<style>
+:root{--navy:#0b1730;--blue:#1688e8;--sky:#eaf5ff;--green:#16834a;--ink:#18253a;--muted:#64748b;--line:#e2e8f0;--paper:#f4f7fb;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif}
+header{background:linear-gradient(120deg,#0b1730,#123d69);color:#fff;padding:24px 18px 34px}
+.top{max-width:1080px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:48px;height:48px;border-radius:15px;background:#fff;color:var(--navy);display:grid;place-items:center;font-size:25px;font-weight:900}
+h1{font-size:clamp(22px,4vw,32px);margin:0}.subtitle{color:#d3e7ff;margin:6px 0 0;font-size:14px}
+.pill{border:1px solid #6a8aaf;border-radius:999px;padding:8px 12px;font-size:12px;color:#eaf5ff}
+main{max-width:1080px;margin:-18px auto 0;padding:0 16px 36px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 8px 28px #0b17300b;margin-bottom:16px}
+.section-title{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:19px}.section-title .ico{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--sky);font-size:20px}
+.muted{color:var(--muted);line-height:1.55;margin:0 0 14px;font-size:14px}
+label{display:block;font-weight:700;font-size:13px;margin:14px 0 7px}
+input{width:100%;border:1px solid #cbd5e1;border-radius:11px;padding:14px;font-size:16px;color:var(--ink);text-transform:uppercase;outline-color:var(--blue)}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+button,.btn{border:0;border-radius:11px;background:var(--green);color:#fff;padding:13px 16px;font-weight:800;font-size:13px;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer;min-height:45px}
+.btn.blue,button.blue{background:var(--blue)}.btn.dark{background:var(--navy)}button.light{background:#eef5fc;color:#17466d;border:1px solid #cfe1f4}
+.status{padding:11px 12px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:13px;margin:12px 0 0;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tile{border:1px solid var(--line);border-radius:15px;padding:17px;background:#fff;min-width:0}
+.tile-head{display:flex;align-items:center;gap:10px;font-weight:800;margin-bottom:7px}.tile .symbol{font-size:22px}
+.tile p{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 12px}.tile .btn{width:100%;font-size:12px}
+.linkbox{border:1px dashed #b7c8db;border-radius:10px;background:#f8fafc;padding:12px;font-size:12px;overflow-wrap:anywhere;min-height:42px;color:#23405f}
+.link-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.link-actions button{flex:1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.notice{background:#fff8e8;border:1px solid #f4d9a2;color:#7a4b00;border-radius:12px;padding:13px;font-size:13px;line-height:1.5}
+footer{text-align:center;color:#7b8798;font-size:12px;padding:0 16px 25px}
+@media(max-width:650px){.grid,.two{grid-template-columns:1fr}.row{grid-template-columns:1fr}.row button{width:100%}.card{padding:16px}header{padding-bottom:28px}}
+</style>
 </head>
-
 <body>
+<header><div class="top"><div class="brand"><div class="logo">A+</div><div><h1>Água &amp; Gás Express</h1><p class="subtitle">Painel de acesso e ferramentas da Empresa</p></div></div><span class="pill">ÁREA DA EMPRESA</span></div></header>
 <main>
-  <h1>Água &amp; Gás Express</h1>
-
-  <section class="card">
-    <h2>Painel de links da Empresa</h2>
-
-    <p class="info">
-      Informe o código da empresa para preparar os convites
-      do Cliente e do Entregador.
-    </p>
-
-    <label for="empresa">Código da empresa</label>
-    <input
-      id="empresa"
-      type="text"
-      placeholder="Digite o código da empresa"
-      autocomplete="off"
-    >
-
-    <p id="status" role="status">
-      Informe o código da empresa.
-    </p>
-  </section>
-
-  <section class="card">
-    <h2>Acesso da Empresa</h2>
-    <p class="info">
-      O APK do Desenvolvedor não é o aplicativo da Empresa. Use o acesso oficial da Empresa para cadastrar-se no primeiro acesso ou entrar com e-mail e senha.
-    </p>
-    <a class="button" id="acessoEmpresa"
-      href="https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/">
-      CADASTRAR / ENTRAR NA EMPRESA
-    </a>
-  </section>
-
-  <section class="card">
-    <h2>Aplicativo do Cliente</h2>
-    <p class="info">
-      Baixe o aplicativo Android do Cliente.
-    </p>
-
-    <a
-      class="button"
-      id="downloadCliente"
-      href="https://alberesbet.github.io/agua-gas-express-v13/downloads/AguaGasExpress-Cliente.apk"
-    >
-      BAIXAR APLICATIVO ANDROID — CLIENTE
-    </a>
-  </section>
-
-  <section class="card">
-    <h2>Aplicativo do Entregador</h2>
-    <p class="info">
-      Baixe o aplicativo Android do Entregador.
-    </p>
-
-    <a
-      class="button"
-      id="downloadEntregador"
-      href="https://alberesbet.github.io/agua-gas-express-v13/downloads/AguaGasExpress-Entregador.apk"
-    >
-      BAIXAR APLICATIVO ANDROID — ENTREGADOR
-    </a>
-  </section>
-
-  <section class="card">
-    <h2>Convites</h2>
-
-    <p class="info">Link para o Cliente — cadastro pela página, sem APK</p>
-    <p class="link-text" id="linkCliente"></p>
-
-    <button type="button" onclick="copiar('cliente')">
-      COPIAR LINK DO CLIENTE
-    </button>
-
-    <a
-      id="abrirCliente"
-      class="button secondary"
-      href="#"
-    >
-      ABRIR CONVITE DO CLIENTE
-    </a>
-
-    <p class="info">Link para o Entregador — requer aplicativo Android</p>
-    <p class="link-text" id="linkEntregador"></p>
-
-    <button type="button" onclick="copiar('entregador')">
-      COPIAR LINK DO ENTREGADOR
-    </button>
-
-    <a
-      id="abrirEntregador"
-      class="button secondary"
-      href="#"
-    >
-      ABRIR CONVITE DO ENTREGADOR
-    </a>
-  </section>
-
-  <p class="small">
-    Esta página oferece downloads e links de convite.
-    Ela não substitui um painel administrativo com cadastro,
-    autenticação, pedidos ou gestão de entregas.
-  </p>
+<section class="card">
+<div class="section-title"><span class="ico">🏢</span><span>Identificação da empresa</span></div>
+<p class="muted">Informe o código recebido do Desenvolvedor. Ele será usado para montar os convites individuais de clientes e entregadores.</p>
+<div class="row"><div><label for="empresa">Código da empresa</label><input id="empresa" type="text" placeholder="Ex.: 570476" autocomplete="off" maxlength="12" aria-describedby="status"></div><button id="limpar" class="light" type="button">Limpar código</button></div>
+<p id="status" class="status" role="status" aria-live="polite">Digite o código da empresa para preparar os convites.</p>
+</section>
+<section class="grid">
+<article class="tile"><div class="tile-head"><span class="symbol">🔐</span><span>Acesso da Empresa</span></div><p>Faça o primeiro cadastro autorizado ou entre com seu e-mail e senha.</p><a class="btn dark" href="https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/">CADASTRAR / ENTRAR</a></article>
+<article class="tile"><div class="tile-head"><span class="symbol">📦</span><span>Pedidos e pagamentos</span></div><p>Abra o aplicativo Android da Empresa para acompanhar pedidos, confirmar pagamentos e atualizar o andamento.</p><a class="btn blue" href="https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/">ABRIR ACESSO DA EMPRESA</a></article>
+<article class="tile"><div class="tile-head"><span class="symbol">👥</span><span>Clientes</span></div><p>Gere um convite da sua empresa para cada cliente. O código da empresa segue no link.</p><a class="btn" href="#convites" onclick="document.getElementById('empresa').focus()">GERAR LINK DO CLIENTE</a></article>
+<article class="tile"><div class="tile-head"><span class="symbol">🛵</span><span>Entregadores</span></div><p>Prepare o convite do entregador vinculado à sua empresa e compartilhe com a equipe.</p><a class="btn" href="#convites" onclick="document.getElementById('empresa').focus()">GERAR LINK DO ENTREGADOR</a></article>
+<article class="tile"><div class="tile-head"><span class="symbol">📲</span><span>Aplicativo do Cliente</span></div><p>Link para instalar o app Android do Cliente, quando necessário.</p><a class="btn blue" href="https://alberesbet.github.io/agua-gas-express-v13/downloads/AguaGasExpress-Cliente.apk">BAIXAR APP CLIENTE</a></article>
+<article class="tile"><div class="tile-head"><span class="symbol">🚚</span><span>Aplicativo do Entregador</span></div><p>Link para instalar o app Android do Entregador, quando necessário.</p><a class="btn blue" href="https://alberesbet.github.io/agua-gas-express-v13/downloads/AguaGasExpress-Entregador.apk">BAIXAR APP ENTREGADOR</a></article>
+</section>
+<section class="card" id="convites" style="margin-top:16px">
+<div class="section-title"><span class="ico">🔗</span><span>Links de convite</span></div>
+<p class="muted">Os links abaixo são atualizados quando você informa o código da empresa. Copie e envie pelo WhatsApp ou outro aplicativo.</p>
+<div class="two">
+<div><label>Convite do Cliente</label><div id="linkCliente" class="linkbox">Informe o código da empresa acima.</div><div class="link-actions"><button type="button" onclick="copiar('cliente')">COPIAR LINK</button><a class="btn blue" id="abrirCliente" href="#" target="_blank" rel="noopener">ABRIR</a></div></div>
+<div><label>Convite do Entregador</label><div id="linkEntregador" class="linkbox">Informe o código da empresa acima.</div><div class="link-actions"><button type="button" onclick="copiar('entregador')">COPIAR LINK</button><a class="btn blue" id="abrirEntregador" href="#" target="_blank" rel="noopener">ABRIR</a></div></div>
+</div>
+</section>
+<div class="notice"><strong>Importante:</strong> este painel web reúne acesso, downloads e geração de convites. Ações operacionais como confirmar pedidos/pagamentos, configurar produtos e Pix, gerenciar entregas e rastreamento continuam no aplicativo Android da Empresa; esta página não finge executar essas ações por conta própria.</div>
 </main>
-
+<footer>Água &amp; Gás Express · Painel da Empresa</footer>
 <script>
-  const BASE =
-    'https://alberesbet.github.io/agua-gas-express-v13/';
-
-  const params = new URLSearchParams(window.location.search);
-  const campoEmpresa = document.getElementById('empresa');
-  const status = document.getElementById('status');
-
-  campoEmpresa.value =
-    (params.get('empresa') || '').toUpperCase();
-
-  function montarLink(perfil) {
-    const codigo = campoEmpresa.value.trim().toUpperCase();
-
-    return BASE + 'invite/?perfil=' +
-      encodeURIComponent(perfil) +
-      '&empresa=' + encodeURIComponent(codigo);
-  }
-
-  function atualizarLinks() {
-    const codigo = campoEmpresa.value.trim().toUpperCase();
-
-    status.textContent = codigo
-      ? 'Código selecionado: ' + codigo
-      : 'Informe o código da empresa para preparar os convites.';
-
-    const cliente = montarLink('cliente');
-    const entregador = montarLink('entregador');
-
-    document.getElementById('linkCliente').textContent = cliente;
-    document.getElementById('linkEntregador').textContent = entregador;
-
-    document.getElementById('abrirCliente').href = cliente;
-    document.getElementById('abrirEntregador').href = entregador;
-  }
-
-  async function copiar(perfil) {
-    const codigo = campoEmpresa.value.trim().toUpperCase();
-
-    if (!codigo) {
-      status.textContent = 'Digite primeiro o código da empresa.';
-      campoEmpresa.focus();
-      return;
-    }
-
-    const link = montarLink(perfil);
-
-    try {
-      await navigator.clipboard.writeText(link);
-      status.textContent = 'Link do ' + perfil + ' copiado!';
-    } catch (e) {
-      window.prompt('Copie o link abaixo:', link);
-    }
-  }
-
-  campoEmpresa.addEventListener('input', atualizarLinks);
-  atualizarLinks();
+const BASE='https://alberesbet.github.io/agua-gas-express-v13/invite/';
+const params=new URLSearchParams(window.location.search);
+const campo=document.getElementById('empresa'),statusEl=document.getElementById('status');
+campo.value=(params.get('empresa')||'').toUpperCase();
+function codigo(){return campo.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}
+function montar(perfil){return BASE+'?perfil='+encodeURIComponent(perfil)+'&empresa='+encodeURIComponent(codigo())}
+function atualizar(){const c=codigo();if(campo.value!==c)campo.value=c;statusEl.textContent=c?'Código selecionado: '+c+'. Confira o código antes de compartilhar.':'Digite o código da empresa para preparar os convites.';for(const p of ['cliente','entregador']){const link=c?montar(p):'';document.getElementById(p==='cliente'?'linkCliente':'linkEntregador').textContent=link||'Informe o código da empresa acima.';document.getElementById(p==='cliente'?'abrirCliente':'abrirEntregador').href=link||'#';document.getElementById(p==='cliente'?'abrirCliente':'abrirEntregador').setAttribute('aria-disabled',c?'false':'true')}}
+async function copiar(perfil){if(!codigo()){statusEl.textContent='Digite primeiro o código da empresa.';campo.focus();return}const link=montar(perfil);try{await navigator.clipboard.writeText(link);statusEl.textContent='Link do '+perfil+' copiado. Já pode colar na conversa.'}catch(e){window.prompt('Copie o link abaixo:',link)}}
+campo.addEventListener('input',atualizar);document.getElementById('limpar').addEventListener('click',()=>{campo.value='';atualizar();campo.focus()});atualizar();
 </script>
-</body>
-</html>
-```
+</body></html>
