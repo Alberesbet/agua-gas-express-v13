@@ -93,15 +93,15 @@ if(perfil==='empresa'){
   // Publicamos o formulário real de acesso da Empresa neste caminho e preservamos o código recebido.
   location.replace('https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa));
 }else if(perfil==='cliente'){
-  title.textContent='Cadastro do Cliente';
+  title.textContent='Aplicativo do Cliente';
+  registration.classList.add('hidden');
   if(!empresa){
-    msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
-    showStatus('Cadastro não iniciado: falta o código da empresa no convite.');
+    msg.textContent='Este convite está sem o código da empresa. Peça à empresa para enviar um novo link.';
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Primeiro, baixe e instale o aplicativo do Cliente. Depois, toque em “JÁ INSTALEI — ABRIR APLICATIVO” para abrir o cadastro no aplicativo. Após concluir o cadastro, você poderá fazer seus pedidos.';
-    addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
-    info.textContent='Passo 1: baixe e instale o aplicativo. Passo 2: volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”. O cadastro e os pedidos serão feitos dentro do aplicativo.';
+    msg.textContent='Instale o aplicativo do Cliente. Para vincular seu cadastro à empresa, abra novamente este mesmo convite depois da instalação.';
+    const intentUrl = 'intent://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'#Intent;scheme=aguagasexpress;package=com.example.aguagasexpress.cliente;S.browser_fallback_url='+encodeURIComponent(apk)+';end';
+    addButton('BAIXAR APLICATIVO DO CLIENTE', intentUrl);
+    info.textContent='';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
@@ -125,52 +125,6 @@ if(perfil==='empresa'){
   msg.textContent='O link não contém um perfil válido. Solicite um novo link à empresa.';
 }
 
-document.getElementById('customerForm').addEventListener('submit',async(event)=>{
-  event.preventDefault();
-  const button=document.getElementById('submitBtn');
-  const name=document.getElementById('name').value.trim();
-  const phone=document.getElementById('phone').value.trim();
-  const docType=document.getElementById('docType').value;
-  const documentNumber=normalizeDoc(document.getElementById('docNumber').value);
-  const cep=digits(document.getElementById('cep').value);
-  const street=document.getElementById('address').value.trim();
-  const number=document.getElementById('number').value.trim();
-  if(!empresa){showStatus('O código da empresa não foi encontrado. Solicite outro convite.');return;}
-  if(digits(phone).length<10){showStatus('Informe um telefone com DDD.');return;}
-  if(cep.length!==8){showStatus('Informe um CEP válido com 8 números.');return;}
-  if(documentNumber && ((docType==='CPF'&&documentNumber.length!==11)||(docType==='CNPJ'&&documentNumber.length!==14)||!docType)){showStatus('Confira o tipo e o número do CPF/CNPJ, ou deixe o documento em branco.');return;}
-  button.disabled=true;button.textContent='ENVIANDO CADASTRO…';
-  try{
-    const credential=await signInAnonymously(auth);
-    const uid=credential.user.uid;
-    const address=street+', '+number;
-    // Resolve o código para o ID real da empresa antes de gravar o cadastro.
-    // A empresa consulta clientes/pedidos pelo companyId; salvar só companyCode deixa o cliente órfão no painel.
-    const companySnapshot = await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(1)));
-    const companyDoc = companySnapshot.docs[0];
-    if(!companyDoc || companyDoc.data()?.active === false){
-      throw new Error('Empresa não encontrada ou desativada. Peça à empresa um novo convite.');
-    }
-    const companyId = companyDoc.id;
-    const id=await customerDocId(phone);
-    await setDoc(doc(db,'customers',id),{
-      uid,name,phone,documentType:docType,documentNumber,cep,address,active:true,
-      companyId,companyCode:empresa,inviteProfile:'cliente',registrationSource:'web-invite',
-      updatedAt:serverTimestamp()
-    },{merge:true});
-    document.getElementById('customerForm').classList.add('hidden');
-    showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora instale o aplicativo do Cliente para entrar e fazer seus pedidos. Toque em “BAIXAR APLICATIVO DO CLIENTE” e, depois da instalação, volte aqui e toque em “JÁ INSTALEI — ABRIR APLICATIVO”.');
-    msg.textContent='Cadastro concluído — falta abrir o aplicativo para fazer pedidos.';
-    addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
-  }catch(error){
-    console.error(error);
-    const errorCode = error?.code || 'erro-desconhecido';
-    const errorMessage = String(error?.message || 'Sem detalhes adicionais').slice(0, 240);
-    showStatus('Falha ao salvar (' + errorCode + '): ' + errorMessage + '. Não altere as regras do Firestore para liberar acesso público.');
-    button.disabled=false;button.textContent='TENTAR ENVIAR CADASTRO NOVAMENTE';
-  }
-});
-</script>
+// O cadastro do cliente acontece exclusivamente dentro do APK.\n</script>
 </body>
 </html>
