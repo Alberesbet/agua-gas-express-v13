@@ -6,6 +6,7 @@ on:
       - main
       - master
       - fix/apks-cliente-entregador-notebook
+      - fix/sync-cliente-empresa-20261012
   workflow_dispatch:
 
 permissions:
