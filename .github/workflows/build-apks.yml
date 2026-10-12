@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -55,14 +55,20 @@ jobs:
           test -s app/build/outputs/apk/cliente/debug/*.apk
           test -s app/build/outputs/apk/entregador/debug/*.apk
 
-      - name: Upload four APKs
+      - name: Upload developer APK only
         uses: actions/upload-artifact@v4
         with:
-          name: AguaGasExpress-APKs-atualizados
-          path: |
-            app/build/outputs/apk/desenvolvedor/debug/*.apk
-            app/build/outputs/apk/empresa/debug/*.apk
-            app/build/outputs/apk/cliente/debug/*.apk
-            app/build/outputs/apk/entregador/debug/*.apk
+          name: AguaGasExpress-Desenvolvedor
+          path: app/build/outputs/apk/desenvolvedor/debug/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish developer APK as direct download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: teste-desenvolvedor
+          name: APK Desenvolvedor - teste
+          prerelease: true
+          make_latest: false
+          files: app/build/outputs/apk/desenvolvedor/debug/*.apk
+          fail_on_unmatched_files: true
