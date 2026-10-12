@@ -2457,6 +2457,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
                             clientHouseNumber.isBlank() -> message = "Informe o número da casa."
+                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() -> message = "Ainda estamos vinculando sua conta à empresa. Aguarde alguns segundos e tente novamente."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
@@ -2779,6 +2780,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     MainButton(if (orderSubmitting) "ENVIANDO PEDIDO…" else "FAZER PEDIDO") {
                         if (orderSubmitting) return@MainButton
                         when {
+                            companyId.isBlank() -> message = "O aplicativo ainda não conseguiu identificar a empresa deste convite. Verifique a conexão e abra novamente o link da empresa."
                             clientWaterQty + clientGasQty == 0 -> message = "Escolha ao menos um produto."
                             products.any { (clientQuantities[it.name] ?: 0) > 0 && it.price <= 0.0 } -> message = "Os preços ainda não foram configurados pela administração."
                             payment == "PIX" && pixKey.isBlank() -> message = "A administração precisa cadastrar a chave Pix."
