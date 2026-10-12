@@ -41,9 +41,9 @@ As páginas apontam para arquivos separados como `AguaGasExpress-Cliente.apk`, `
 
 ### 5. Código da empresa
 
-O código é gerado localmente com seis caracteres hexadecimais derivados de UUID, sem uma verificação explícita de colisão antes de gravar o documento. Os fluxos usam esse código para localizar a empresa no Firestore.
+O código é gerado localmente com seis caracteres hexadecimais derivados de UUID. A alteração inicial nesta branch agora consulta o Firestore antes de gravar e tenta outro código se encontrar um já cadastrado, com até cinco tentativas.
 
-**Correção necessária:** gerar o código no backend ou fazer uma reserva transacional com verificação de unicidade; validar o código no servidor e nunca tratar o código de convite como prova de identidade. O código compartilhado deve vincular o usuário à empresa, mas a autorização final precisa depender da conta autenticada e das regras.
+**Limite importante:** essa consulta prévia reduz a chance de colisão, mas não é uma reserva atômica; dois cadastros simultâneos ainda podem, em teoria, escolher o mesmo código. A correção definitiva é gerar/reservar o código no backend ou por transação com verificação de unicidade; validar o código no servidor e nunca tratá-lo como prova de identidade. O código compartilhado deve vincular o usuário à empresa, mas a autorização final precisa depender da conta autenticada e das regras.
 
 ### 6. Fluxo de cliente/entregador
 
