@@ -126,15 +126,10 @@ if(perfil==='cliente'){
     msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
     showStatus('Não foi possível identificar a empresa neste convite.');
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Primeiro baixe o aplicativo do Cliente. Depois volte a esta página, preencha o cadastro e toque em concluir. O botão final abrirá o aplicativo para você fazer pedidos.';
-    const downloadButton=addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    downloadButton.addEventListener('click',()=>{
-      registration.classList.remove('hidden');
-      info.textContent='Depois de iniciar o download, volte para esta página e preencha seus dados. Ao concluir, toque em ABRIR APLICATIVO para entrar na tela de pedidos.';
-      msg.textContent='Aplicativo do Cliente: download iniciado. Agora preencha o cadastro abaixo.';
-    });
-    addButton('ABRIR PÁGINA ALTERNATIVA DE DOWNLOAD',releasePage,true);
-    info.textContent='Toque primeiro em BAIXAR APLICATIVO DO CLIENTE. Depois volte aqui para preencher o cadastro e abrir o aplicativo.';
+    msg.textContent='Convite da empresa '+empresa+'. Primeiro, baixe e instale o aplicativo do Cliente. Depois, volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”. O cadastro e os pedidos serão feitos dentro do aplicativo.';
+    addButton('BAIXAR APLICATIVO DO CLIENTE','https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Cliente.apk');
+    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
+    info.textContent='1. Baixe e instale o aplicativo. 2. Volte aqui e toque em “JÁ INSTALEI — ABRIR APLICATIVO”. 3. Faça o cadastro no aplicativo para depois fazer seus pedidos.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
