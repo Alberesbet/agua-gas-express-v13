@@ -2986,7 +2986,51 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("🔒 Licença de uso da empresa — não vender, ceder ou revender o aplicativo.", color = Color(0xFFFFD0A8), fontSize = 11.sp)
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
+                val inviteCompanyCode = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            val link = makeInviteLink("cliente", inviteCompanyCode)
+                            val textToShare = "Água & Gás Express — Cadastro de Cliente\n\n$link"
+                            try {
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_SUBJECT, "Link de cadastro de cliente")
+                                    putExtra(Intent.EXTRA_TEXT, textToShare)
+                                }, "Enviar link do cliente"))
+                                message = "Link do cliente preparado para envio."
+                            } catch (_: Exception) {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link do cliente", textToShare))
+                                message = "Link do cliente copiado."
+                            }
+                        },
+                        enabled = inviteCompanyCode.length >= 6
+                    ) { Text("👤 ENVIAR LINK DO CLIENTE", textAlign = TextAlign.Center) }
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            val link = makeInviteLink("entregador", inviteCompanyCode)
+                            val textToShare = "Água & Gás Express — Cadastro de Entregador\n\n$link"
+                            try {
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_SUBJECT, "Link de cadastro de entregador")
+                                    putExtra(Intent.EXTRA_TEXT, textToShare)
+                                }, "Enviar link do entregador"))
+                                message = "Link do entregador preparado para envio."
+                            } catch (_: Exception) {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link do entregador", textToShare))
+                                message = "Link do entregador copiado."
+                            }
+                        },
+                        enabled = inviteCompanyCode.length >= 6
+                    ) { Text("🚚 ENVIAR LINK DO ENTREGADOR", textAlign = TextAlign.Center) }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text("RESUMO DAS VENDAS", color = LightBlue, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, letterSpacing = 1.sp)
                 Spacer(Modifier.height(7.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
