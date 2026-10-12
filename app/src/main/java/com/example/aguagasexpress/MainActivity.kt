@@ -2635,7 +2635,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
 
             Page.CUSTOMER -> {
-                Header("Faça seu pedido", "🛍️")
+                Header(
+                    if (!clientProfileSaved && customerAccessMode == "register") "Fazer cadastro" else "Faça seu pedido",
+                    "🛍️"
+                )
                 if (!clientProfileSaved && customerAccessMode == "choice") {
                     Text("Você já tem cadastro?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(14.dp))
@@ -2741,7 +2744,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO E CONTINUAR") {
+                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2823,8 +2826,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    if (!prefs.getString("invite_profile", "").equals("cliente", ignoreCase = true) ||
+                        prefs.getString("invite_company_code", "").isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
+                    }
                     ErrorText(message)
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
