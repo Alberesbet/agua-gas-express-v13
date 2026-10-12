@@ -126,10 +126,15 @@ if(perfil==='cliente'){
     msg.textContent='Este convite está sem o código da empresa. Peça à empresa para gerar e enviar um novo link.';
     showStatus('Não foi possível identificar a empresa neste convite.');
   }else{
-    msg.textContent='Convite da empresa '+empresa+'. Primeiro baixe e instale o aplicativo do Cliente. Depois toque no ícone do aplicativo e faça seu cadastro dentro dele. Ao concluir o cadastro, você deverá entrar na tela de pedidos.';
-    addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
+    msg.textContent='Convite da empresa '+empresa+'. Primeiro baixe o aplicativo do Cliente. Depois volte a esta página, preencha o cadastro e toque em concluir. O botão final abrirá o aplicativo para você fazer pedidos.';
+    const downloadButton=addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
+    downloadButton.addEventListener('click',()=>{
+      registration.classList.remove('hidden');
+      info.textContent='Depois de iniciar o download, volte para esta página e preencha seus dados. Ao concluir, toque em ABRIR APLICATIVO para entrar na tela de pedidos.';
+      msg.textContent='Aplicativo do Cliente: download iniciado. Agora preencha o cadastro abaixo.';
+    });
     addButton('ABRIR PÁGINA ALTERNATIVA DE DOWNLOAD',releasePage,true);
-    info.textContent='Não faça o cadastro nesta página e não precisa tocar em “já instalei”. Depois da instalação, abra o ícone Água & Gás Express no celular e conclua o cadastro no aplicativo.';
+    info.textContent='Toque primeiro em BAIXAR APLICATIVO DO CLIENTE. Depois volte aqui para preencher o cadastro e abrir o aplicativo.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
@@ -188,10 +193,10 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     },{merge:true});
     document.getElementById('customerForm').classList.add('hidden');
      actions.innerHTML='';
-    showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora instale o aplicativo e toque em “JÁ FIZ O CADASTRO — ABRIR APLICATIVO”. Seus dados serão aproveitados, sem precisar cadastrar novamente.');
-    msg.textContent='Cadastro concluído — abra o aplicativo para fazer pedidos.';
+    showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Toque em ABRIR APLICATIVO para entrar na tela de pedidos. Seus dados serão aproveitados no aplicativo.');
+    msg.textContent='Cadastro concluído — toque abaixo para abrir o aplicativo e fazer seu pedido.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ FIZ O CADASTRO — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
+    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
