@@ -2504,40 +2504,84 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val customerRef = firestore.collection("customers").document(customerDocumentId(digits))
                                 fun saveRegistration(uid: String) {
                                     val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
-                                    val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
-                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("company_code", "").orEmpty() })
-                                    customerRef.set(mapOf(
-                                        "uid" to uid,
-                                        "name" to clientName.trim(),
-                                        "phone" to clientPhone.trim(),
-                                        "documentType" to clientDocType,
-                                        "documentNumber" to normalizeDocument(clientDocNumber),
-                                        "cep" to clientCep.trim(),
-                                        "address" to savedAddress,
-                                        "companyId" to resolvedCompanyId,
-                                        "companyCode" to resolvedCompanyCode,
-                                        "active" to true,
-                                        "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
-                                    ), SetOptions.merge())
-                                        .addOnSuccessListener {
-                                            customerAccessLoading = false
-                                            clientProfileSaved = true
-                                            customerAccessMode = "orders"
-                                            prefs.edit().putString("client_name", clientName.trim())
-                                                .putString("client_phone", clientPhone.trim())
-                                                .putString("client_doc_type", clientDocType)
-                                                .putString("client_doc_number", normalizeDocument(clientDocNumber))
-                                                .putString("client_cep", clientCep.trim())
-                                                .putString("client_street_address", clientAddress.trim())
-                                                .putString("client_house_number", clientHouseNumber.trim())
-                                                .putString("client_address", savedAddress)
-                                                .putBoolean("client_profile_saved", true).apply()
-                                            message = ""
+                                    val resolvedCompanyCode = normalizeCompanyCode(
+                                        invitedCompanyCode.ifBlank {
+                                            prefs.getString("invite_company_code", "").orEmpty()
+                                                .ifBlank { prefs.getString("company_code", "").orEmpty() }
                                         }
-                                        .addOnFailureListener { e ->
+                                    )
+                                    val savedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
+
+                                    fun writeCustomer(resolvedCompanyId: String) {
+                                        if (resolvedCompanyId.isBlank() || resolvedCompanyCode.isBlank()) {
                                             customerAccessLoading = false
-                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                            message = "Não foi possível confirmar a empresa deste convite. Abra novamente o link enviado pela empresa e tente de novo."
+                                            return
                                         }
+                                        customerRef.set(mapOf(
+                                            "uid" to uid,
+                                            "name" to clientName.trim(),
+                                            "phone" to clientPhone.trim(),
+                                            "documentType" to clientDocType,
+                                            "documentNumber" to normalizeDocument(clientDocNumber),
+                                            "cep" to clientCep.trim(),
+                                            "address" to savedAddress,
+                                            "companyId" to resolvedCompanyId,
+                                            "companyCode" to resolvedCompanyCode,
+                                            "inviteProfile" to "cliente",
+                                            "registrationSource" to "android-invite",
+                                            "active" to true,
+                                            "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                        ), SetOptions.merge())
+                                            .addOnSuccessListener {
+                                                customerAccessLoading = false
+                                                clientProfileSaved = true
+                                                customerAccessMode = "orders"
+                                                prefs.edit().putString("client_name", clientName.trim())
+                                                    .putString("client_phone", clientPhone.trim())
+                                                    .putString("client_doc_type", clientDocType)
+                                                    .putString("client_doc_number", normalizeDocument(clientDocNumber))
+                                                    .putString("client_cep", clientCep.trim())
+                                                    .putString("client_street_address", clientAddress.trim())
+                                                    .putString("client_house_number", clientHouseNumber.trim())
+                                                    .putString("client_address", savedAddress)
+                                                    .putString("company_id", resolvedCompanyId)
+                                                    .putString("company_code", resolvedCompanyCode)
+                                                    .putBoolean("client_profile_saved", true).apply()
+                                                message = ""
+                                            }
+                                            .addOnFailureListener { e ->
+                                                customerAccessLoading = false
+                                                message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                            }
+                                    }
+
+                                    if (savedCompanyId.isNotBlank()) {
+                                        writeCustomer(savedCompanyId)
+                                    } else {
+                                        // Nunca grava um cadastro com companyId vazio: a consulta de convite
+                                        // pode ainda estar em andamento quando o usuário toca em Salvar.
+                                        firestore.collection("companies")
+                                            .whereEqualTo("companyCode", resolvedCompanyCode)
+                                            .limit(1)
+                                            .get()
+                                            .addOnSuccessListener { companies ->
+                                                val company = companies.documents.firstOrNull()
+                                                if (company == null || company.getBoolean("active") == false) {
+                                                    customerAccessLoading = false
+                                                    message = "Empresa não encontrada ou desativada. Solicite um novo link de cadastro."
+                                                } else {
+                                                    val actualCompanyCode = normalizeCompanyCode(company.getString("companyCode").orEmpty().ifBlank { resolvedCompanyCode })
+                                                    prefs.edit().putString("company_id", company.id)
+                                                        .putString("company_code", actualCompanyCode).apply()
+                                                    writeCustomer(company.id)
+                                                }
+                                            }
+                                            .addOnFailureListener { e ->
+                                                customerAccessLoading = false
+                                                message = "Não foi possível confirmar a empresa no Firebase: ${e.localizedMessage ?: "verifique a conexão"}"
+                                            }
+                                    }
                                 }
                                 fun checkDuplicate(uid: String) {
                                     customerRef.get()
