@@ -2633,19 +2633,19 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         onClick = {
                                             val companyLabel = prefs.getString("company_name", "Água & Gás Express") ?: "Água & Gás Express"
                                             val shareText = buildString {
-                                                append("Acompanhe minha entrega no Água & Gás Express\\n")
-                                                append("Empresa: ").append(companyLabel).append("\\n")
-                                                append("Pedido #").append(lastClientOrder.orderNumber.toString().padStart(2, '0')).append("\\n")
+                                                append("Acompanhe minha entrega no Água & Gás Express\n")
+                                                append("Empresa: ").append(companyLabel).append("\n")
+                                                append("Pedido #").append(lastClientOrder.orderNumber.toString().padStart(2, '0')).append("\n")
                                                 append("Status: ").append(when (lastClientOrder.status) {
                                                     "Autorizado" -> "Pedido confirmado; aguardando saída para entrega"
                                                     "Em entrega" -> "Saiu para entrega"
                                                     "Chegou ao endereço" -> "O entregador chegou ao endereço"
                                                     else -> lastClientOrder.status
-                                                }).append("\\n")
-                                                append("Endereço: ").append(listOf(clientAddress, clientHouseNumber).filter { it.isNotBlank() }.joinToString(", ")).append("\\n")
-                                                append("Itens: ").append(lastClientOrder.items).append("\\n")
+                                                }).append("\n")
+                                                append("Endereço: ").append(listOf(clientAddress, clientHouseNumber).filter { it.isNotBlank() }.joinToString(", ")).append("\n")
+                                                append("Itens: ").append(lastClientOrder.items).append("\n")
                                                 append("Total: ").append(money(lastClientOrder.total))
-                                                if (lastClientOrder.status == "Em entrega") append("\\nAbra o app e toque em Acompanhar entrega para ver a localização atual.")
+                                                if (lastClientOrder.status == "Em entrega") append("\nAbra o app e toque em Acompanhar entrega para ver a localização atual.")
                                             }
                                             try {
                                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
