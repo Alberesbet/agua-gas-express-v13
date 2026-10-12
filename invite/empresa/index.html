@@ -112,10 +112,19 @@ async function verifyAndOpen(user){
  const found=await withTimeout(findCompany(code,email),15000,'A consulta ao cadastro da empresa demorou mais de 15 segundos. Verifique a conexão e as regras de leitura do Firestore. O acesso não foi confirmado; tente novamente.');
  if(!found)throw new Error('O código '+code+' e o e-mail '+email+' não foram encontrados juntos no cadastro do Desenvolvedor. Confira se o e-mail autorizado está exatamente igual, sem espaços ou erro de digitação.');
  const companyData=found.data();
+ if(companyData.active===false)throw new Error('Esta empresa está desativada. Entre em contato com o Desenvolvedor.');
+ const permanent=companyData.licensePermanent===true;
+ const expiresAt=Number(companyData.licenseExpiresAt||0);
+ if(!permanent&&expiresAt>0&&Date.now()>expiresAt)throw new Error('A licença desta empresa expirou. Entre em contato com o Desenvolvedor.');
  const existingAuthUid=String(companyData.authUid||'');
  if(existingAuthUid && existingAuthUid!==user.uid)throw new Error('Esta empresa já está vinculada a outra conta de autenticação. Use a conta autorizada ou peça ao Desenvolvedor para revisar o vínculo.');
- if(!existingAuthUid)await setDoc(doc(db,'companies',found.id),{authUid:user.uid},{merge:true});
- verifiedCompany={id:found.id,...companyData,authUid:user.uid};
+ if(!existingAuthUid || companyData.activated!==true){
+  const patch={};
+  if(!existingAuthUid)patch.authUid=user.uid;
+  if(companyData.activated!==true){patch.activated=true;patch.companyActivatedAt=Date.now();}
+  await setDoc(doc(db,'companies',found.id),patch,{merge:true});
+ }
+ verifiedCompany={id:found.id,...companyData,authUid:user.uid,activated:true};
  $('authCard').classList.add('hidden');$('dashboard').classList.remove('hidden');
  $('welcome').textContent='Olá, '+safe(verifiedCompany.name||verifiedCompany.companyName||'Empresa')+'!';
  $('companyStatus').textContent='Código: '+(verifiedCompany.companyCode||found.id)+' • E-mail autorizado: '+email;
