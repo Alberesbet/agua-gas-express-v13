@@ -1454,20 +1454,55 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         masterCompanyPhone.filter(Char::isDigit).length < 8 -> { error = "Informe um telefone válido."; return@Button }
                     }
                     ensureFirebase {
-                        val code = generateCompanyCode(); val now = System.currentTimeMillis(); val permanent = masterPermanent; val days = trialDays.toIntOrNull() ?: 30; val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L; val id = UUID.randomUUID().toString(); val license = generateCommercialLicenseKey()
                         val uid = auth.currentUser?.uid
                         if (uid.isNullOrBlank()) { loading = false; error = "Firebase Auth ainda não está autenticado. Tente novamente após ativar o login anônimo no Firebase."; return@ensureFirebase }
-                        val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
-                                "appVersion" to "12.0-test")
-                        firestore.collection("companies").document(id).set(data).addOnSuccessListener {
-                            masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
-                            // Atualiza a lista imediatamente após salvar, sem depender de fechar e reabrir o aplicativo.
-                            firestore.collection("companies").get().addOnSuccessListener { snap ->
-                                masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
-                            }.addOnFailureListener { e ->
-                                masterStatus = "Empresa cadastrada, mas a lista não atualizou: ${e.localizedMessage ?: "erro ao atualizar"}"
+                        loading = true
+
+                        // Confere o código antes de gravar para evitar reutilizar um código já cadastrado.
+                        // O mesmo companyCode permanece sendo usado nos links de empresa, cliente e entregador.
+                        fun createCompanyWithUniqueCode(attempt: Int) {
+                            if (attempt >= 5) {
+                                loading = false
+                                error = "Não foi possível gerar um código exclusivo agora. Tente novamente."
+                                return
                             }
-                        }.addOnFailureListener { e -> loading = false; error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}" }
+                            val code = generateCompanyCode()
+                            firestore.collection("companies")
+                                .whereEqualTo("companyCode", code)
+                                .limit(1)
+                                .get()
+                                .addOnSuccessListener { matches ->
+                                    if (!matches.isEmpty) {
+                                        createCompanyWithUniqueCode(attempt + 1)
+                                        return@addOnSuccessListener
+                                    }
+                                    val now = System.currentTimeMillis()
+                                    val permanent = masterPermanent
+                                    val days = trialDays.toIntOrNull() ?: 30
+                                    val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L
+                                    val id = UUID.randomUUID().toString()
+                                    val license = generateCommercialLicenseKey()
+                                    val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
+                                        "appVersion" to "12.0-test")
+                                    firestore.collection("companies").document(id).set(data).addOnSuccessListener {
+                                        masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
+                                        // Atualiza a lista imediatamente após salvar, sem depender de fechar e reabrir o aplicativo.
+                                        firestore.collection("companies").get().addOnSuccessListener { snap ->
+                                            masterCompanyDocs = snap.documents.sortedByDescending { it.getLong("createdAt") ?: 0L }
+                                        }.addOnFailureListener { e ->
+                                            masterStatus = "Empresa cadastrada, mas a lista não atualizou: ${e.localizedMessage ?: "erro ao atualizar"}"
+                                        }
+                                    }.addOnFailureListener { e ->
+                                        loading = false
+                                        error = "Não foi possível autorizar a empresa: ${e.localizedMessage ?: "erro no Firebase"}"
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    loading = false
+                                    error = "Não foi possível verificar se o código está livre: ${e.localizedMessage ?: "erro no Firebase"}"
+                                }
+                        }
+                        createCompanyWithUniqueCode(0)
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CADASTRANDO..." else "CADASTRAR EMPRESA") }
             } else {
