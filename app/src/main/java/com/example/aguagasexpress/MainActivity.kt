@@ -324,11 +324,13 @@ class MainActivity : ComponentActivity() {
         // Os APKs públicos de cliente e entregador não dependem de convite.
         // Cada variante abre diretamente no fluxo de cadastro/acesso do seu perfil.
         if (defaultProfile == "cliente" || defaultProfile == "entregador") {
-            prefs.edit()
+            val profileEditor = prefs.edit()
                 .putString("company_role", if (defaultProfile == "cliente") "customer" else "delivery")
                 .remove("invite_profile")
-                .remove("invite_company_code")
-                .apply()
+            // Preserve the company code when the APK was opened from a company invite.
+            // The customer/driver screen resolves this code to the real Firestore company ID.
+            if (!hasInvite) profileEditor.remove("invite_company_code")
+            profileEditor.apply()
         } else if (!hasInvite &&
             !( !prefs.getString("company_id", "").isNullOrBlank() &&
                 prefs.getBoolean("company_authenticated", false))) {
@@ -1525,8 +1527,9 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
 @Composable
 private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     val context = LocalContext.current
-    val companyId = prefs.getString("company_id", "") ?: ""
-    val companyName = prefs.getString("company_name", "Empresa") ?: "Empresa"
+    var companyId by remember { mutableStateOf(prefs.getString("company_id", "") ?: "") }
+    var companyName by remember { mutableStateOf(prefs.getString("company_name", "Empresa") ?: "Empresa") }
+    val invitedCompanyCode = prefs.getString("invite_company_code", "").orEmpty()
     val justRegistered = prefs.getBoolean("company_just_registered", false)
     var page by remember { mutableStateOf(
         when (prefs.getString("company_role", "member").orEmpty()) {
@@ -1565,6 +1568,35 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var productToDelete by remember { mutableStateOf<Product?>(null) }
     var orders by remember { mutableStateOf(loadOrders(prefs).filter { it.companyId.isBlank() || it.companyId == companyId }) }
     var firebaseStatus by remember { mutableStateOf("Conectando ao Firebase…") }
+    LaunchedEffect(invitedCompanyCode) {
+        if (invitedCompanyCode.isNotBlank() && companyId.isBlank()) {
+            FirebaseFirestore.getInstance().collection("companies")
+                .whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode))
+                .limit(1)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val company = snapshot.documents.firstOrNull()
+                    if (company == null) {
+                        firebaseStatus = "Não foi possível localizar a empresa deste convite. Peça à empresa um novo link."
+                    } else if (company.getBoolean("active") == false) {
+                        firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
+                    } else {
+                        companyId = company.id
+                        companyName = company.getString("name") ?: "Empresa"
+                        prefs.edit()
+                            .putString("company_id", company.id)
+                            .putString("company_name", companyName)
+                            .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
+                            .remove("invite_company_code")
+                            .apply()
+                        firebaseStatus = "Convite vinculado à empresa $companyName."
+                    }
+                }
+                .addOnFailureListener { error ->
+                    firebaseStatus = "Não foi possível validar a empresa do convite: ${error.localizedMessage ?: "erro de conexão"}"
+                }
+        }
+    }
     val selectedOrders = remember { mutableStateListOf<Long>() }
     var customer by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
