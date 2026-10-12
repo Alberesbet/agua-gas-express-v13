@@ -100,7 +100,7 @@ if(perfil==='empresa'){
   }else{
     msg.textContent='Convite da empresa '+empresa+'. Primeiro, baixe e instale o aplicativo do Cliente. Depois, toque em “JÁ INSTALEI — ABRIR APLICATIVO” para abrir o cadastro no aplicativo. Após concluir o cadastro, você poderá fazer seus pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
+    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
     info.textContent='Passo 1: baixe e instale o aplicativo. Passo 2: volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”. O cadastro e os pedidos serão feitos dentro do aplicativo.';
   }
 }else if(perfil==='entregador'){
