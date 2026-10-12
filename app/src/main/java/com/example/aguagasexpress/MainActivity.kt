@@ -72,7 +72,7 @@ import kotlinx.coroutines.delay
 
 private val Navy = Color(0xFF0B1730)
 private val Blue = Color(0xFF1688E8)
-private val LightBlue = Color(0xFFB91C1C)
+private val LightBlue = Color(0xFF7F1D1D)
 private val Orange = Color(0xFFFF8A32)
 private val Ink = Color(0xFF18253A)
 private val Green = Color(0xFF16834A)
