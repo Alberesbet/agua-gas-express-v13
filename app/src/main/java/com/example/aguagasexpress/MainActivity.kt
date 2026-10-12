@@ -1421,13 +1421,45 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             OutlinedTextField(email, { email = it }, label = { Text("E-mail autorizado pela empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Button(enabled = !loading, onClick = {
-                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) { error = "Informe um e-mail válido."; return@Button }
+                val normalizedEmail = email.trim()
+                val normalizedCode = normalizeCompanyCode(invitedCode)
+                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) { error = "Informe um e-mail válido."; return@Button }
+                if (normalizedCode.isBlank()) { error = "Este convite está sem o código da empresa. Solicite um novo link ao Desenvolvedor."; return@Button }
                 ensureFirebase {
-                    firestore.collection("companies").whereEqualTo("email", email.trim()).limit(20).get().addOnSuccessListener { snap ->
-                        val doc = snap.documents.filter { !(it.getBoolean("activated") ?: false) }.maxByOrNull { it.getLong("createdAt") ?: 0L }
-                        if (doc == null) error = "Este e-mail ainda não foi autorizado pelo proprietário."
-                        else { prefs.edit().putString("invite_company_code", doc.getString("companyCode") ?: "").putString("pending_company_id", doc.id).apply(); companyEmailVerified = true; mode = "register"; error = "" }
-                    }.addOnFailureListener { e -> error = e.localizedMessage ?: "Não foi possível consultar a autorização." }
+                    loading = true
+                    firestore.collection("companies").whereEqualTo("companyCode", normalizedCode).limit(2).get().addOnSuccessListener { snap ->
+                        val doc = snap.documents.firstOrNull()
+                        val authorizedEmailMatches = doc?.getString("email")?.equals(normalizedEmail, ignoreCase = true) == true
+                        if (doc == null || !authorizedEmailMatches) {
+                            loading = false
+                            error = "O código deste convite e o e-mail informado não correspondem à mesma empresa autorizada."
+                        } else if (doc.getBoolean("active") == false) {
+                            loading = false
+                            error = "Esta empresa está desativada. Solicite suporte ao Desenvolvedor."
+                        } else {
+                            val permanent = doc.getBoolean("licensePermanent") ?: false
+                            val expiry = doc.getLong("licenseExpiresAt") ?: 0L
+                            if (!permanent && expiry > 0L && System.currentTimeMillis() > expiry) {
+                                loading = false
+                                error = "A licença desta empresa expirou. Solicite suporte ao Desenvolvedor."
+                            } else if (doc.getBoolean("activated") == true) {
+                                loading = false
+                                loginEmail = normalizedEmail
+                                mode = "login"
+                                error = "Esta empresa já possui acesso cadastrado. Entre com o e-mail e a senha existentes."
+                            } else {
+                                prefs.edit().putString("invite_company_code", normalizedCode)
+                                    .putString("pending_company_id", doc.id).apply()
+                                companyEmailVerified = true
+                                mode = "register"
+                                loading = false
+                                error = ""
+                            }
+                        }
+                    }.addOnFailureListener { e ->
+                        loading = false
+                        error = e.localizedMessage ?: "Não foi possível consultar a autorização."
+                    }
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CONSULTANDO..." else "CONTINUAR COM ESTE E-MAIL") }
         } else if (mode == "register") {
