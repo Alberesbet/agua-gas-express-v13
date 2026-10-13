@@ -44,7 +44,7 @@ a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
@@ -171,7 +171,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     const address=street+', '+number;
     // Resolve o código do convite para o ID real da empresa usado pelo painel.
     let companyDoc=null;
-    if(empresaId){const direct=await getDocs(query(collection(db,'companies'),where('__name__','==',empresaId),limit(1)));companyDoc=direct.docs[0]||null;}
+    if(empresaId){const direct=await getDoc(doc(db,'companies',empresaId));companyDoc=direct.exists()?direct:null;}
     if(companyDoc && String(companyDoc.data()?.companyCode||'').toUpperCase().replace(/[^A-Z0-9]/g,'')!==empresa) companyDoc=null;
     if(!companyDoc){const companySnapshot=await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(2)));const matches=companySnapshot.docs.filter(d=>String(d.data()?.companyCode||'').toUpperCase().replace(/[^A-Z0-9]/g,'')===empresa);companyDoc=matches.length===1?matches[0]:null;}
     if(!companyDoc || companyDoc.data()?.active===false){
@@ -189,7 +189,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora você pode instalar o aplicativo do Cliente para fazer pedidos.');
     msg.textContent='Cadastro concluído — agora você pode baixar o aplicativo para fazer seu pedido.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
+    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&empresaId='+encodeURIComponent(companyId)+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
