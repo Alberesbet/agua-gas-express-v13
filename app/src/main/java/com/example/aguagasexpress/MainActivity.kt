@@ -1614,32 +1614,36 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         val invitedCompanyId = prefs.getString("invite_company_id", "").orEmpty()
         if ((invitedCompanyCode.isNotBlank() || invitedCompanyId.isNotBlank()) && companyId.isBlank()) {
             val companies = FirebaseFirestore.getInstance().collection("companies")
-            val companyLookup = if (invitedCompanyId.isNotBlank()) companies.document(invitedCompanyId).get() else companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get().continueWith { task ->
-                val matches = task.result?.documents.orEmpty().filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
-                if (matches.size == 1) matches.first() else null
+            fun applyResolvedCompany(company: com.google.firebase.firestore.DocumentSnapshot?) {
+                if (company == null || !company.exists() || (invitedCompanyCode.isNotBlank() && normalizeCompanyCode(company.getString("companyCode").orEmpty()) != normalizeCompanyCode(invitedCompanyCode))) {
+                    firebaseStatus = "Não foi possível confirmar a empresa deste convite. Peça à empresa um novo link."
+                } else if (company.getBoolean("active") == false) {
+                    firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
+                } else {
+                    companyId = company.id
+                    companyName = company.getString("name") ?: "Empresa"
+                    prefs.edit()
+                        .putString("company_id", company.id)
+                        .putString("company_name", companyName)
+                        .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
+                        .remove("invite_company_code")
+                        .remove("invite_company_id")
+                        .apply()
+                    firebaseStatus = "Convite vinculado à empresa $companyName."
+                }
             }
-            companyLookup
-                .addOnSuccessListener { company ->
-                    if (company == null || (invitedCompanyCode.isNotBlank() && normalizeCompanyCode(company.getString("companyCode").orEmpty()) != normalizeCompanyCode(invitedCompanyCode))) {
-                        firebaseStatus = "Não foi possível confirmar a empresa deste convite. Peça à empresa um novo link."
-                    } else if (company.getBoolean("active") == false) {
-                        firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
-                    } else {
-                        companyId = company.id
-                        companyName = company.getString("name") ?: "Empresa"
-                        prefs.edit()
-                            .putString("company_id", company.id)
-                            .putString("company_name", companyName)
-                            .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
-                            .remove("invite_company_code")
-                            .remove("invite_company_id")
-                            .apply()
-                        firebaseStatus = "Convite vinculado à empresa $companyName."
+            if (invitedCompanyId.isNotBlank()) {
+                companies.document(invitedCompanyId).get()
+                    .addOnSuccessListener { applyResolvedCompany(it) }
+                    .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+            } else {
+                companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get()
+                    .addOnSuccessListener { snapshot ->
+                        val matches = snapshot.documents.filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
+                        applyResolvedCompany(matches.singleOrNull())
                     }
-                }
-                .addOnFailureListener { error ->
-                    firebaseStatus = "Não foi possível validar a empresa do convite: ${error.localizedMessage ?: "erro de conexão"}"
-                }
+                    .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+            }
         }
     }
     val selectedOrders = remember { mutableStateListOf<Long>() }
