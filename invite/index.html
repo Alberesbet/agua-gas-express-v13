@@ -126,14 +126,12 @@ if(perfil==='cliente'){
     ? 'Convite da empresa '+empresa+'. Toque no botão abaixo para baixar o aplicativo. Depois, abra o app, faça seu cadastro e faça seu pedido.'
     : 'Toque no botão abaixo para baixar o aplicativo do Cliente. Para vincular seu cadastro a uma empresa, use o convite enviado por ela.';
   addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-  if(empresa) addButton('JÁ INSTALEI — ABRIR APLICATIVO', 'aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa), true);
-  info.textContent=empresa ? 'Código da empresa: '+empresa+' • Depois de instalar, volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO” para vincular à empresa.' : '';
+  info.textContent=empresa ? 'Código da empresa: '+empresa+'. O cadastro e o acesso serão vinculados a esta empresa.' : '';
 }else if(perfil==='entregador'){
   title.textContent='Aplicativo do Entregador';
   msg.textContent='Toque no botão abaixo para baixar o aplicativo do Entregador. Depois, abra o app e entre usando o convite da empresa.';
   addButton('BAIXAR APLICATIVO DO ENTREGADOR',apk);
-  if(empresa) addButton('JÁ INSTALEI — ABRIR APLICATIVO', 'aguagasexpress://invite?perfil=entregador&empresa='+encodeURIComponent(empresa), true);
-  info.textContent='Código da empresa: '+(empresa||'não informado')+(empresa?' • Depois de instalar, volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO” para vincular à empresa.':'');
+  info.textContent='Código da empresa: '+(empresa||'não informado')+(empresa?'. O acesso será vinculado a esta empresa.':'');
 }else if(perfil==='empresa'){
   title.textContent='Aplicativo da Empresa';
   msg.textContent='Toque no botão abaixo para abrir a página de versões do aplicativo da Empresa. Use o código do convite para acessar o painel.';
