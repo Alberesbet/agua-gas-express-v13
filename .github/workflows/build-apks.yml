@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -54,14 +54,33 @@ jobs:
           test -s app/build/outputs/apk/cliente/debug/*.apk
           test -s app/build/outputs/apk/entregador/debug/*.apk
 
-      - name: Upload four APKs
+      - name: Prepare individual APK downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist-apks
+          cp app/build/outputs/apk/desenvolvedor/debug/*.apk dist-apks/AguaGasExpress-Desenvolvedor.apk
+          cp app/build/outputs/apk/empresa/debug/*.apk dist-apks/AguaGasExpress-Empresa.apk
+          cp app/build/outputs/apk/cliente/debug/*.apk dist-apks/AguaGasExpress-Cliente.apk
+          cp app/build/outputs/apk/entregador/debug/*.apk dist-apks/AguaGasExpress-Entregador.apk
+
+      - name: Upload four APKs as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: AguaGasExpress-APKs-atualizados
-          path: |
-            app/build/outputs/apk/desenvolvedor/debug/*.apk
-            app/build/outputs/apk/empresa/debug/*.apk
-            app/build/outputs/apk/cliente/debug/*.apk
-            app/build/outputs/apk/entregador/debug/*.apk
+          path: dist-apks/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish separate APK downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-test-latest
+          name: APKs de teste — Água & Gás Express
+          body: APKs separados por perfil, compilados automaticamente pelo GitHub Actions.
+          make_latest: false
+          files: |
+            dist-apks/AguaGasExpress-Desenvolvedor.apk
+            dist-apks/AguaGasExpress-Empresa.apk
+            dist-apks/AguaGasExpress-Cliente.apk
+            dist-apks/AguaGasExpress-Entregador.apk
