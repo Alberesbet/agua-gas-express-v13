@@ -2447,7 +2447,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         if (FirebaseAuth.getInstance().currentUser != null) lookupCustomer()
                         else FirebaseAuth.getInstance().signInAnonymously()
                             .addOnSuccessListener { lookupCustomer() }
-                            .addOnFailureListener { e -> customerAccessLoading = false; message = "Não foi possível conectar ao Firebase: ${e.localizedMessage ?: "tente novamente"}" }
+                            .addOnFailureListener { e -> customerAccessLoading = false; message = "Não foi possível conectar. Tente novamente." }
                     }
                     Spacer(Modifier.height(8.dp))
                     MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
@@ -2489,7 +2489,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "VALIDANDO..." else "SALVAR CADASTRO E CONTINUAR") {
+                    MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2497,7 +2497,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
                             clientHouseNumber.isBlank() -> message = "Informe o número da casa."
-                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() && normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("invite_company_code", "").orEmpty() }.ifBlank { prefs.getString("company_code", "").orEmpty() }).isBlank() -> message = "Ainda estamos vinculando sua conta à empresa. Abra novamente o link de convite enviado pela empresa e tente cadastrar de novo."
+                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() -> message = "Aguarde a confirmação da empresa e tente novamente."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
@@ -2505,7 +2505,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 fun saveRegistration(uid: String) {
                                     val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
                                     val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
-                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("company_code", "").orEmpty() })
+                                    val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("invite_company_code", "").orEmpty() }.ifBlank { prefs.getString("company_code", "").orEmpty() })
+                                    if (resolvedCompanyId.isBlank()) {
+                                        customerAccessLoading = false
+                                        message = "Aguarde a confirmação da empresa e tente novamente."
+                                        return
+                                    }
                                     customerRef.set(mapOf(
                                         "uid" to uid,
                                         "name" to clientName.trim(),
@@ -2536,7 +2541,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         }
                                         .addOnFailureListener { e ->
                                             customerAccessLoading = false
-                                            message = "Não foi possível salvar no Firebase: ${e.localizedMessage ?: "verifique a internet"}"
+                                            message = "Não foi possível salvar. Verifique a conexão e tente novamente."
                                         }
                                 }
                                 fun checkDuplicate(uid: String) {
@@ -2544,7 +2549,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         .addOnSuccessListener { existing ->
                                             if (existing.exists() && existing.getString("phone").orEmpty().filter { it.isDigit() } == digits) {
                                                 customerAccessLoading = false
-                                                message = "Esse número já tem cadastro. Use Login pelo telefone."
+                                                message = "Este telefone já está cadastrado. Entre com seus dados."
                                                 customerAccessMode = "register"
                                             } else {
                                                 saveRegistration(uid)
@@ -2552,7 +2557,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         }
                                         .addOnFailureListener { e ->
                                             customerAccessLoading = false
-                                            message = "Não foi possível verificar se o telefone já existe: ${e.localizedMessage ?: "tente novamente"}"
+                                            message = "Não foi possível verificar o telefone. Tente novamente."
                                         }
                                 }
                                 FirebaseAuth.getInstance().currentUser?.uid?.let { uid -> checkDuplicate(uid) }
@@ -2561,7 +2566,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             val uid = result.user?.uid
                                             if (uid.isNullOrBlank()) {
                                                 customerAccessLoading = false
-                                                message = "Não foi possível autenticar no Firebase."
+                                                message = "Não foi possível entrar. Tente novamente."
                                             } else checkDuplicate(uid)
                                         }
                                         .addOnFailureListener { e ->
