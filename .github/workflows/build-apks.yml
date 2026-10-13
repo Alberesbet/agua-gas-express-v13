@@ -1,3 +1,4 @@
+# Rebuild APKs for the latest catalog and app changes.
 name: Build APK profiles
 
 on:
