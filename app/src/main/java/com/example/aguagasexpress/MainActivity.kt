@@ -83,8 +83,9 @@ private val Green = Color(0xFF16834A)
 private const val WEB_INVITE_BASE_URL = "https://alberesbet.github.io/agua-gas-express-v13/invite/"
 // Um único link por convite. O Android App Link abre o aplicativo quando ele já está instalado;
 // caso contrário, o mesmo HTTPS cai na página Web de entrada/download.
-private fun makeInviteLink(profile: String, companyCode: String, platform: String = ""): String {
-    return "$WEB_INVITE_BASE_URL?perfil=${Uri.encode(profile)}&empresa=${Uri.encode(companyCode)}"
+private fun makeInviteLink(profile: String, companyCode: String, companyId: String = "", platform: String = ""): String {
+    val idParam = if (companyId.isBlank()) "" else "&empresaId=${Uri.encode(companyId)}"
+    return "$WEB_INVITE_BASE_URL?perfil=${Uri.encode(profile)}&empresa=${Uri.encode(companyCode)}$idParam"
 }
 
 // Código inicial de autorização. É local/offline; não substitui autenticação online.
@@ -280,6 +281,7 @@ class MainActivity : ComponentActivity() {
         if (inviteProfile !in setOf("cliente", "entregador", "empresa", "proprietario")) return false
 
         val inviteCompanyCode = data.getQueryParameter("empresa")?.let(::normalizeCompanyCode).orEmpty()
+        val inviteCompanyId = data.getQueryParameter("empresaId")?.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.orEmpty().take(128)
         val webCustomerId = data.getQueryParameter("clienteId")?.filter { it.isLetterOrDigit() }?.take(32).orEmpty()
         val invitePlatform = data.getQueryParameter("plataforma")?.lowercase(Locale.ROOT).orEmpty()
         val editor = prefs.edit().putString("invite_profile", inviteProfile)
@@ -290,6 +292,7 @@ class MainActivity : ComponentActivity() {
             editor.remove("company_id").remove("company_role").remove("company_authenticated")
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
+        if (inviteCompanyId.isNotBlank()) editor.putString("invite_company_id", inviteCompanyId)
         if (inviteProfile == "cliente") {
             // Preservece o cadastro local já concluído. O link deve vincular a empresa,
             // não apagar os dados e forçar o cliente a se cadastrar a cada abertura.
@@ -1131,7 +1134,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
-        val direct = makeInviteLink("empresa", normalized)
+        val direct = makeInviteLink("empresa", normalized, masterCompanyId)
         val text = "🏪 Água & Gás Express — LINK ÚNICO DA EMPRESA\n\n$direct\n\nAo abrir, a página identifica o convite e orienta o acesso para Android e Notebook.\nE-mail autorizado: $emailForMessage"
         try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
@@ -1607,16 +1610,18 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var productToDelete by remember { mutableStateOf<Product?>(null) }
     var orders by remember { mutableStateOf(loadOrders(prefs).filter { it.companyId.isBlank() || it.companyId == companyId }) }
     var firebaseStatus by remember { mutableStateOf("Conectando ao Firebase…") }
-    LaunchedEffect(invitedCompanyCode) {
-        if (invitedCompanyCode.isNotBlank() && companyId.isBlank()) {
-            FirebaseFirestore.getInstance().collection("companies")
-                .whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode))
-                .limit(1)
-                .get()
-                .addOnSuccessListener { snapshot ->
-                    val company = snapshot.documents.firstOrNull()
-                    if (company == null) {
-                        firebaseStatus = "Não foi possível localizar a empresa deste convite. Peça à empresa um novo link."
+    LaunchedEffect(invitedCompanyCode, prefs.getString("invite_company_id", "")) {
+        val invitedCompanyId = prefs.getString("invite_company_id", "").orEmpty()
+        if ((invitedCompanyCode.isNotBlank() || invitedCompanyId.isNotBlank()) && companyId.isBlank()) {
+            val companies = FirebaseFirestore.getInstance().collection("companies")
+            val companyLookup = if (invitedCompanyId.isNotBlank()) companies.document(invitedCompanyId).get() else companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get().continueWith { task ->
+                val matches = task.result?.documents.orEmpty().filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
+                if (matches.size == 1) matches.first() else null
+            }
+            companyLookup
+                .addOnSuccessListener { company ->
+                    if (company == null || (invitedCompanyCode.isNotBlank() && normalizeCompanyCode(company.getString("companyCode").orEmpty()) != normalizeCompanyCode(invitedCompanyCode))) {
+                        firebaseStatus = "Não foi possível confirmar a empresa deste convite. Peça à empresa um novo link."
                     } else if (company.getBoolean("active") == false) {
                         firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
                     } else {
@@ -1627,6 +1632,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             .putString("company_name", companyName)
                             .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
                             .remove("invite_company_code")
+                            .remove("invite_company_id")
                             .apply()
                         firebaseStatus = "Convite vinculado à empresa $companyName."
                     }
