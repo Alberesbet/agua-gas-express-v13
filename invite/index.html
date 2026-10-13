@@ -121,12 +121,15 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Aplicativo do Cliente';
-  msg.textContent=empresa
-    ? 'Convite da empresa '+empresa+'. Toque no botão abaixo para baixar o aplicativo. Depois, abra o app, faça seu cadastro e faça seu pedido.'
-    : 'Toque no botão abaixo para baixar o aplicativo do Cliente. Para vincular seu cadastro a uma empresa, use o convite enviado por ela.';
+  title.textContent='Cadastro do Cliente';
+  if(empresa){
+    registration.classList.remove('hidden');
+    msg.textContent='Convite da empresa '+empresa+'. Preencha seus dados abaixo para registrar seu cadastro diretamente nessa empresa.';
+  }else{
+    msg.textContent='Para vincular seu cadastro a uma empresa, abra o link de convite enviado por ela.';
+  }
   addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-  info.textContent=empresa ? 'Código da empresa: '+empresa+'. O cadastro e o acesso serão vinculados a esta empresa.' : '';
+  info.textContent=empresa ? 'Código da empresa: '+empresa+'. O cadastro será gravado com o ID e o código desta empresa.' : '';
 }else if(perfil==='entregador'){
   title.textContent='Aplicativo do Entregador';
   msg.textContent='Toque no botão abaixo para baixar o aplicativo do Entregador. Depois, abra o app e entre usando o convite da empresa.';
