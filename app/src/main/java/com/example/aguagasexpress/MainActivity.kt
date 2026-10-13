@@ -1954,7 +1954,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                     if (snapshot != null && snapshot.exists()) {
                         val remoteProductsJson = snapshot.getString("productsJson")
-                        if (!remoteProductsJson.isNullOrBlank() && remoteProductsJson != "[]") {
+                        // O catálogo remoto da empresa é a fonte oficial também para o cliente.
+                        // Um catálogo vazio é válido: não mostrar os produtos de demonstração locais.
+                        if (remoteProductsJson != null && (remoteProductsJson.isNotBlank()) &&
+                            (remoteProductsJson != "[]" || !canSeeAllOrders)) {
                             prefs.edit().putString("products_json", remoteProductsJson).apply()
                             products = loadProducts(prefs)
                         } else if (canSeeAllOrders && products.isNotEmpty()) {
