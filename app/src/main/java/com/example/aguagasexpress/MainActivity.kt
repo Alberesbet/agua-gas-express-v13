@@ -2784,8 +2784,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         RadioButton(selected = payment == "PIX", onClick = { payment = "PIX"; message = "" })
                         Text("Pix", color = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        RadioButton(selected = payment == "Fiado", onClick = { payment = "Fiado"; message = "No momento não estamos com essa opção. Aguarde mais alguns instantes." })
-                        Text("Fiado", color = Color.White)
+                        RadioButton(selected = payment == "Cartão", onClick = { payment = "Cartão"; message = "" })
+                        Text("Cartão", color = Color.White)
                     }
                     if (payment == "Dinheiro") {
                         InputField("Quanto você vai entregar? (ex.: 50)", cashGiven, true) { cashGiven = it; message = "" }
@@ -2798,10 +2798,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             Text("Informe o valor que vai entregar para calcular o troco.", color = Color.White, fontSize = 12.sp)
                         }
                     }
-                    if (payment == "Fiado") {
+                    if (payment == "Cartão") {
                         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
                             Text(
-                                "No momento não estamos com essa opção. Aguarde mais alguns instantes.",
+                                "Pagamento com cartão selecionado. Combine a forma de pagamento com a empresa.",
                                 modifier = Modifier.padding(14.dp), color = Ink, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold
                             )
                         }
