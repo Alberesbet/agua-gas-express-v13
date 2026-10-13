@@ -60,6 +60,7 @@ const db = getFirestore(app);
 const params = new URLSearchParams(location.search);
 const perfil = (params.get('perfil') || '').toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+const empresaId = (params.get('empresaId') || '').replace(/[^A-Za-z0-9_-]/g,'').slice(0,128);
 const title = document.getElementById('title');
 const msg = document.getElementById('msg');
 const actions = document.getElementById('actions');
@@ -169,8 +170,10 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     const uid=credential.user.uid;
     const address=street+', '+number;
     // Resolve o código do convite para o ID real da empresa usado pelo painel.
-    const companySnapshot=await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(1)));
-    const companyDoc=companySnapshot.docs[0];
+    let companyDoc=null;
+    if(empresaId){const direct=await getDocs(query(collection(db,'companies'),where('__name__','==',empresaId),limit(1)));companyDoc=direct.docs[0]||null;}
+    if(companyDoc && String(companyDoc.data()?.companyCode||'').toUpperCase().replace(/[^A-Z0-9]/g,'')!==empresa) companyDoc=null;
+    if(!companyDoc){const companySnapshot=await getDocs(query(collection(db,'companies'),where('companyCode','==',empresa),limit(2)));const matches=companySnapshot.docs.filter(d=>String(d.data()?.companyCode||'').toUpperCase().replace(/[^A-Z0-9]/g,'')===empresa);companyDoc=matches.length===1?matches[0]:null;}
     if(!companyDoc || companyDoc.data()?.active===false){
       throw new Error('Empresa não encontrada ou desativada. Peça à empresa um novo convite.');
     }
