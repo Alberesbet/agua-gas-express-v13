@@ -150,12 +150,13 @@ async function loadData(code){
  orderDocs.forEach(d=>{const x=d.data();const div=document.createElement('div');div.className='item';const title=document.createElement('strong');title.textContent='Pedido '+safe(x.orderNumber||x.id||d.id)+' • '+safe(x.customer||x.name);div.appendChild(title);const info=document.createElement('p');info.className='small';info.textContent=safe(x.status)+' • '+safe(x.items)+' • '+safe(x.payment)+' • '+safe(x.phone);div.appendChild(info);const total=document.createElement('p');total.textContent='Total: '+Number(x.total||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});div.appendChild(total);
   const actions=document.createElement('div');actions.className='item-actions';
   const addAction=(label,changes)=>{const b=document.createElement('button');b.textContent=label;b.onclick=async()=>{try{b.disabled=true;await updateDoc(doc(db,'orders',d.id),changes);await loadData(code)}catch(e){alert('Não foi possível atualizar o pedido: '+(e.message||e.code))}finally{b.disabled=false}};actions.appendChild(b)};
-  if(x.status==='Pendente'&&!x.paid)addAction('CONFIRMAR PAGAMENTO',{paid:true,paymentConfirmedAt:Date.now(),receiptGeneratedAt:Date.now(),status:'Autorizado'});
-  if(x.status==='Pendente'){const sel=document.createElement('select');for(let i=1;i<=6;i++){const opt=document.createElement('option');opt.value=String(i);opt.textContent=driverNames[i-1]||('Entregador '+i);sel.appendChild(opt)}sel.value=String(x.assignedDriver||1);actions.appendChild(sel);const b=document.createElement('button');b.className='secondary';b.textContent='AUTORIZAR E ATRIBUIR';b.onclick=async()=>{try{b.disabled=true;await updateDoc(doc(db,'orders',d.id),{status:'Autorizado',assignedDriver:Number(sel.value),approvalSentAt:x.approvalSentAt||Date.now()});await loadData(code)}catch(e){alert('Não foi possível autorizar: '+(e.message||e.code))}finally{b.disabled=false}};actions.appendChild(b)}
-  if(x.status==='Autorizado')addAction('INICIAR ENTREGA',{status:'Em entrega',trackingActive:true,deliveryStartedAt:Date.now()});
-  if(x.status==='Em entrega')addAction('MARCAR CHEGADA',{status:'Chegou ao endereço',trackingActive:false,arrivalAt:Date.now()});
-  if(x.status==='Chegou ao endereço')addAction('CONCLUIR PEDIDO',{status:'Concluído',trackingActive:false});
-  div.appendChild(actions);$('orders').appendChild(div);
+  if(statusKey==='pendente'&&!x.paid)addAction('CONFIRMAR PAGAMENTO',{paid:true,paymentConfirmedAt:Date.now(),receiptGeneratedAt:Date.now(),status:'Autorizado'});
+  if(statusKey==='pendente'){const sel=document.createElement('select');for(let i=1;i<=6;i++){const opt=document.createElement('option');opt.value=String(i);opt.textContent=driverNames[i-1]||('Entregador '+i);sel.appendChild(opt)}sel.value=String(x.assignedDriver||1);actions.appendChild(sel);const b=document.createElement('button');b.className='secondary';b.textContent='AUTORIZAR E ATRIBUIR';b.onclick=async()=>{try{b.disabled=true;await updateDoc(doc(db,'orders',d.id),{status:'Autorizado',assignedDriver:Number(sel.value),approvalSentAt:x.approvalSentAt||Date.now()});await loadData(code)}catch(e){alert('Não foi possível autorizar: '+(e.message||e.code))}finally{b.disabled=false}};actions.appendChild(b)}
+  if(statusKey==='autorizado')addAction('INICIAR ENTREGA',{status:'Em entrega',trackingActive:true,deliveryStartedAt:Date.now()});
+  if(statusKey==='em entrega')addAction('MARCAR CHEGADA',{status:'Chegou ao endereço',trackingActive:false,arrivalAt:Date.now()});
+  if(statusKey==='chegou ao endereco')addAction('CONCLUIR PEDIDO',{status:'Concluído',trackingActive:false});
+  if(!actions.children.length){const note=document.createElement('p');note.className='small';note.textContent='Nenhuma ação disponível para o status atual: '+safe(x.status||'Pendente');actions.appendChild(note)}
+   div.appendChild(actions);$('orders').appendChild(div);
  });
  renderStats();renderRecentOrders();
 }
