@@ -1,4 +1,4 @@
-name: Build and publish three APK profiles
+name: Build and publish app profiles
 
 on:
   push:
@@ -48,33 +48,35 @@ jobs:
           chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
           "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
 
-      - name: Build all three APKs in one Gradle invocation
+      - name: Build all app profiles in one Gradle invocation
         run: |
           "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleAllProfilesDebug
 
-      - name: Verify and rename all three APKs
+      - name: Verify and rename APKs for developer, company, customer and delivery
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
           cp app/build/outputs/apk/desenvolvedor/debug/*.apk dist/AguaGasExpress-Desenvolvedor.apk
+          cp app/build/outputs/apk/empresa/debug/*.apk dist/AguaGasExpress-Empresa.apk
           cp app/build/outputs/apk/cliente/debug/*.apk dist/AguaGasExpress-Cliente.apk
           cp app/build/outputs/apk/entregador/debug/*.apk dist/AguaGasExpress-Entregador.apk
           test -s dist/AguaGasExpress-Desenvolvedor.apk
+          test -s dist/AguaGasExpress-Empresa.apk
           test -s dist/AguaGasExpress-Cliente.apk
           test -s dist/AguaGasExpress-Entregador.apk
           sha256sum dist/*.apk
           ls -lh dist/
 
-      - name: Upload all three APKs as build artifacts
+      - name: Upload APKs for all four profiles as build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AguaGasExpress-tres-APKs
+          name: AguaGasExpress-APKs-perfis
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish downloadable APKs for the company app
+      - name: Publish downloadable APKs for all app profiles
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-build
@@ -83,12 +85,14 @@ jobs:
           body: |
             APKs gerados juntos pela compilação automatizada.
             - Desenvolvedor: aplicativo administrativo.
+            - Empresa: instalador para a empresa.
             - Cliente: instalador para clientes.
             - Entregador: instalador para entregadores.
           prerelease: true
           make_latest: false
           files: |
             dist/AguaGasExpress-Desenvolvedor.apk
+            dist/AguaGasExpress-Empresa.apk
             dist/AguaGasExpress-Cliente.apk
             dist/AguaGasExpress-Entregador.apk
           overwrite_files: true
