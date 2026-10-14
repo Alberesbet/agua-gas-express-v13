@@ -95,6 +95,29 @@ const downloadUrls = {
 };
 const apk = downloadUrls[perfil] || '';
 
+const appPackages = {
+  empresa: 'com.example.aguagasexpress.empresa',
+  cliente: 'com.example.aguagasexpress.cliente',
+  entregador: 'com.example.aguagasexpress.entregador',
+  proprietario: 'com.example.aguagasexpress.desenvolvedor'
+};
+function appIntentUrl(extraQuery=''){
+  const packageName = appPackages[perfil];
+  if(!packageName) return '#';
+  const companyParam = empresa ? '&empresa='+encodeURIComponent(empresa) : '';
+  const companyIdParam = empresaId ? '&empresaId='+encodeURIComponent(empresaId) : '';
+  return 'intent://invite?perfil='+encodeURIComponent(perfil)+companyParam+companyIdParam+extraQuery
+    +'&plataforma=android#Intent;scheme=aguagasexpress;package='+packageName+';end';
+}
+function addOpenAppButton(label, extraQuery=''){
+  const a=addButton(label,'#',true);
+  a.addEventListener('click',function(event){
+    event.preventDefault();
+    window.location.href=appIntentUrl(extraQuery);
+  });
+  return a;
+}
+
 function addButton(label, href, secondary=false){
   const a=document.createElement('a'); a.href=href; a.textContent=label; a.className='btn'+(secondary?' secondary':''); actions.appendChild(a); return a;
 }
@@ -149,18 +172,20 @@ if(perfil==='cliente'){
     msg.textContent='Para vincular seu cadastro a uma empresa, abra o link de convite enviado por ela.';
   }
   addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
+  addOpenAppButton('JÁ INSTALEI — ABRIR APLICATIVO');
   info.textContent=empresa ? 'Código da empresa: '+empresa+'. O cadastro será gravado com o ID e o código desta empresa.' : '';
 }else if(perfil==='entregador'){
   title.textContent='Aplicativo do Entregador';
   msg.textContent='Toque no botão abaixo para baixar o aplicativo do Entregador. Depois, abra o app e entre usando o convite da empresa.';
   addButton('BAIXAR APLICATIVO DO ENTREGADOR',apk);
+  addOpenAppButton('JÁ INSTALEI — ABRIR APLICATIVO');
   info.textContent='Código da empresa: '+(empresa||'não informado')+(empresa?'. O acesso será vinculado a esta empresa.':'');
 }else if(perfil==='empresa'){
   title.textContent='Acesso da Empresa';
   msg.textContent='Escolha como deseja acessar: instale o aplicativo Android da Empresa ou abra o painel pela web. Use o código do convite em qualquer opção.';
   addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
-  addButton('ABRIR APLICATIVO DA EMPRESA','aguagasexpress://invite?perfil=empresa&empresa='+encodeURIComponent(empresa),true);
-  addButton('ENTRAR PELA WEB — EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  addOpenAppButton('ABRIR APLICATIVO DA EMPRESA');
+  addButton('ENTRAR PELA WEB — EMPRESA','https://agua-e-gas-express.web.app/invite/empresa/?perfil=empresa&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):''),true);
   info.textContent='Código da empresa: '+(empresa||'não informado')+'. O cadastro/acesso usa o mesmo código no aplicativo e na web.';
 }else if(perfil==='proprietario'){
   title.textContent='Aplicativo do Desenvolvedor';
