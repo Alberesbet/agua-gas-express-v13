@@ -1025,10 +1025,9 @@ private fun shareLatestApk(
         makeInviteLink("cliente", normalizedCode, companyId)
     } else ""
     val shareText = if (inviteUrl.isNotBlank()) {
-        "Água & Gás Express — Aplicativo do Cliente\n\n" +
-            "1) Baixe e instale o aplicativo do Cliente:\n$apkUrl\n\n" +
-            "2) Depois de instalar, abra este link para vincular o aplicativo à empresa $normalizedCode e carregar os produtos, preços e Pix corretos:\n$inviteUrl\n\n" +
-            "Importante: abra o link de vínculo depois da instalação. Ele identifica a empresa certa para os pedidos."
+        "Água & Gás Express — LINK ÚNICO DO CLIENTE\n\n" +
+            "$inviteUrl\n\n" +
+            "Envie somente este link ao cliente. Se o aplicativo ainda não estiver instalado, o link inicia o download. Depois de instalar, toque novamente neste mesmo link para abrir o cadastro já vinculado à empresa $normalizedCode. Não envie um segundo link de APK."
     } else {
         "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
     }
@@ -1775,6 +1774,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         val phoneDigits = prefs.getString("client_phone", "").orEmpty().filter(Char::isDigit)
                         if (phoneDigits.isNotBlank()) {
                             val customerIds = listOf(
+                                prefs.getString("client_customer_doc_id", "").orEmpty(),
                                 prefs.getString("web_customer_doc_id", "").orEmpty(),
                                 customerDocumentId(phoneDigits),
                                 legacyCustomerDocumentId(phoneDigits)
@@ -1946,7 +1946,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
     var clientProfileSaved by remember { mutableStateOf(prefs.getBoolean("client_profile_saved", false)) }
-    var customerAccessMode by remember { mutableStateOf(if (prefs.getBoolean("client_profile_saved", false)) "orders" else "choice") }
+    var customerAccessMode by remember { mutableStateOf(
+        if (prefs.getBoolean("client_profile_saved", false)) "orders"
+        else if (prefs.getString("invite_company_id", "").orEmpty().isNotBlank() || prefs.getString("invite_company_code", "").orEmpty().isNotBlank()) "register"
+        else "choice"
+    ) }
     var customerLoginPhone by remember { mutableStateOf("") }
     var customerAccessLoading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -2634,9 +2638,27 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     if (doc.exists()) {
                                         applyCustomerDocument(doc)
                                     } else {
-                                        // Try the old Base64 document ID before reporting a missing registration.
+                                        // Compatibilidade com IDs antigos; cadastros novos usam IDs aleatórios
+                                        // para permitir repetir o mesmo telefone em novos aparelhos.
                                         db.collection("customers").document(legacyCustomerDocumentId(digits)).get()
-                                            .addOnSuccessListener { legacyDoc -> applyCustomerDocument(legacyDoc) }
+                                            .addOnSuccessListener { legacyDoc ->
+                                                if (legacyDoc.exists()) {
+                                                    applyCustomerDocument(legacyDoc)
+                                                } else {
+                                                    db.collection("customers").whereEqualTo("companyId", companyId).get()
+                                                        .addOnSuccessListener { customers ->
+                                                            val match = customers.documents.lastOrNull {
+                                                                it.getString("phone").orEmpty().filter { ch -> ch.isDigit() } == digits
+                                                            }
+                                                            if (match != null) applyCustomerDocument(match)
+                                                            else {
+                                                                customerAccessLoading = false
+                                                                message = "Não encontramos cadastro com esse telefone nesta empresa. Você pode fazer um novo cadastro."
+                                                            }
+                                                        }
+                                                        .addOnFailureListener { e -> customerAccessLoading = false; message = "Falha ao consultar cadastro: ${e.localizedMessage ?: "verifique a internet"}" }
+                                                }
+                                            }
                                             .addOnFailureListener { e -> customerAccessLoading = false; message = "Falha ao consultar cadastro: ${e.localizedMessage ?: "verifique a internet"}" }
                                     }
                                 }
@@ -2699,7 +2721,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
-                                val customerRef = firestore.collection("customers").document(customerDocumentId(digits))
+                                // Documento novo por cadastro: telefone repetido não bloqueia
+                                // novo aparelho, reinstalação ou um segundo cadastro.
+                                val customerRef = firestore.collection("customers").document()
                                 fun saveRegistration(uid: String) {
                                     val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
                                     val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
@@ -2719,6 +2743,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "address" to savedAddress,
                                         "companyId" to resolvedCompanyId,
                                         "companyCode" to resolvedCompanyCode,
+                                        "inviteProfile" to "cliente",
                                         "active" to true,
                                         "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                     ), SetOptions.merge())
@@ -2734,6 +2759,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                                 .putString("client_street_address", clientAddress.trim())
                                                 .putString("client_house_number", clientHouseNumber.trim())
                                                 .putString("client_address", savedAddress)
+                                                .putString("client_customer_doc_id", customerRef.id)
                                                 .putBoolean("client_profile_saved", true).apply()
                                             message = ""
                                         }
@@ -2742,30 +2768,14 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             message = "Não foi possível salvar. Verifique a conexão e tente novamente."
                                         }
                                 }
-                                fun checkDuplicate(uid: String) {
-                                    customerRef.get()
-                                        .addOnSuccessListener { existing ->
-                                            if (existing.exists() && existing.getString("phone").orEmpty().filter { it.isDigit() } == digits) {
-                                                customerAccessLoading = false
-                                                message = "Este telefone já está cadastrado. Entre com seus dados."
-                                                customerAccessMode = "register"
-                                            } else {
-                                                saveRegistration(uid)
-                                            }
-                                        }
-                                        .addOnFailureListener { e ->
-                                            customerAccessLoading = false
-                                            message = "Não foi possível verificar o telefone. Tente novamente."
-                                        }
-                                }
-                                FirebaseAuth.getInstance().currentUser?.uid?.let { uid -> checkDuplicate(uid) }
+                                FirebaseAuth.getInstance().currentUser?.uid?.let { uid -> saveRegistration(uid) }
                                     ?: FirebaseAuth.getInstance().signInAnonymously()
                                         .addOnSuccessListener { result ->
                                             val uid = result.user?.uid
                                             if (uid.isNullOrBlank()) {
                                                 customerAccessLoading = false
                                                 message = "Não foi possível entrar. Tente novamente."
-                                            } else checkDuplicate(uid)
+                                            } else saveRegistration(uid)
                                         }
                                         .addOnFailureListener { e ->
                                             customerAccessLoading = false
