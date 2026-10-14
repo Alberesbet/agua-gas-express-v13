@@ -988,7 +988,12 @@ private suspend fun lookupCep(cep: String): JSONObject? = withContext(Dispatcher
     } catch (_: Exception) { null }
 }
 
-private fun shareLatestApk(context: Context, role: String) {
+private fun shareLatestApk(
+    context: Context,
+    role: String,
+    companyCode: String = "",
+    companyId: String = ""
+) {
     val normalizedRole = role.lowercase(Locale.ROOT)
     val label = when (normalizedRole) {
         "cliente" -> "Cliente"
@@ -1001,7 +1006,18 @@ private fun shareLatestApk(context: Context, role: String) {
         else -> "AguaGasExpress-Empresa.apk"
     }
     val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
-    val shareText = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
+    val normalizedCode = normalizeCompanyCode(companyCode)
+    val inviteUrl = if (normalizedRole == "cliente" && normalizedCode.isNotBlank() && companyId.isNotBlank()) {
+        makeInviteLink("cliente", normalizedCode, companyId)
+    } else ""
+    val shareText = if (inviteUrl.isNotBlank()) {
+        "Água & Gás Express — Aplicativo do Cliente\\n\\n" +
+            "1) Baixe e instale o aplicativo do Cliente:\\n$apkUrl\\n\\n" +
+            "2) Depois de instalar, abra este link para vincular o aplicativo à empresa $normalizedCode e carregar os produtos, preços e Pix corretos:\\n$inviteUrl\\n\\n" +
+            "Importante: abra o link de vínculo depois da instalação. Ele identifica a empresa certa para os pedidos."
+    } else {
+        "Água & Gás Express — APK do $label\\n\\nBaixe e instale a versão mais recente por este link:\\n$apkUrl"
+    }
     try {
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -3131,7 +3147,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
                 // Compartilha os APKs publicados da versão mais recente, sem links de cadastro.
-                MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk(context, "cliente") }
+                MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk(context, "cliente", prefs.getString("company_code", "").orEmpty(), companyId) }
                 MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk(context, "entregador") }
                 MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
                 if (showCustomersDeleteDialog) {
