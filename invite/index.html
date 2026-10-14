@@ -60,6 +60,7 @@ const db = getFirestore(app);
 const params = new URLSearchParams(location.search);
 const perfil = (params.get('perfil') || '').toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+const empresaId = (params.get('empresaId') || '').trim();
 const empresaId = (params.get('empresaId') || '').replace(/[^A-Za-z0-9_-]/g,'').slice(0,128);
 const title = document.getElementById('title');
 const msg = document.getElementById('msg');
@@ -191,7 +192,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora você pode instalar o aplicativo do Cliente para fazer pedidos.');
     msg.textContent='Cadastro concluído — agora você pode baixar o aplicativo para fazer seu pedido.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&empresaId='+encodeURIComponent(companyId)+'&clienteId='+encodeURIComponent(id),true);
+    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):'')+'&empresaId='+encodeURIComponent(companyId)+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
