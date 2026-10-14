@@ -712,7 +712,7 @@ private fun pixTlv(id: String, value: String): String = id + value.length.toStri
 
 private fun buildPixCopyPaste(key: String, recipient: String, city: String, amount: Double): String {
     fun safe(value: String, max: Int): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
-        .replace(Regex("\p{M}+"), "")
+        .replace(Regex("\\p{M}+"), "")
         .uppercase(Locale.ROOT)
         .replace(Regex("[^A-Z0-9 ]"), "")
         .trim().take(max).ifBlank { "NAO INFORMADO" }
@@ -2868,7 +2868,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Pix com valor", payload))
                                             pixCopied = true
-                                            message = "Pix copia e cola com o valor de \${money(clientTotal)} copiado."
+                                            message = "Pix copia e cola com o valor de ${money(clientTotal)} copiado."
                                         }
                                     }
                                 }
