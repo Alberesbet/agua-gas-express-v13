@@ -1187,8 +1187,8 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
         val direct = makeInviteLink("empresa", normalized, masterCompanyId)
-        val clientLink = makeInviteLink("cliente", normalized, masterCompanyId)
-        val deliveryLink = makeInviteLink("entregador", normalized, masterCompanyId)
+        val clientLink = "https://alberesbet.github.io/agua-gas-express-v13/invite/cliente/?perfil=cliente&empresa=A63AF1&empresaId=d3e1622b-873a-41a8-9297-7a27e97f4ae6"
+        val deliveryLink = "https://alberesbet.github.io/agua-gas-express-v13/invite/entregador/?perfil=entregador&empresa=A63AF1&empresaId=d3e1622b-873a-41a8-9297-7a27e97f4ae6"
         val text = "🏪 Água & Gás Express — LINK DA EMPRESA\n\n$direct\n\n👤 LINK DE CADASTRO DO CLIENTE\n$clientLink\n\n🛵 LINK DE CADASTRO DO ENTREGADOR\n$deliveryLink\n\nEnvie o link da empresa para o responsável acessar o painel. A empresa pode compartilhar os links individuais de cliente e entregador com sua equipe.\nE-mail autorizado: $emailForMessage"
         try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
