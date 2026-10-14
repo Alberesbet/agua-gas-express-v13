@@ -58,7 +58,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const params = new URLSearchParams(location.search);
-const perfil = (params.get('perfil') || '').toLowerCase();
+const pathParts = location.pathname.toLowerCase().split('/').filter(Boolean);
+const pathProfile = ['cliente','entregador','empresa','desenvolvedor'].find(p => pathParts.includes(p)) || '';
+// Alguns aplicativos/compartilhadores removem a query string; recupere o perfil pelo caminho.
+const perfil = (params.get('perfil') || params.get('tipo') || pathProfile || (params.has('empresa') ? 'cliente' : '')).toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
 const empresaId = (params.get('empresaId') || '').trim();
 const title = document.getElementById('title');
@@ -141,8 +144,20 @@ if(perfil==='cliente'){
   addButton('BAIXAR APLICATIVO DO DESENVOLVEDOR',apk);
   addButton('Página alternativa de downloads',releasePage,true);
 }else{
-  title.textContent='Convite inválido';
-  msg.textContent='O link não contém um perfil válido. Solicite um novo link à empresa.';
+  title.textContent='Escolha seu acesso';
+  msg.textContent='Este link abriu a página principal sem identificar o perfil. Escolha uma opção abaixo. Para cadastro de cliente, use o convite com o código da empresa.';
+  const clientUrl = new URL('cliente/', location.href);
+  const deliveryUrl = new URL('entregador/', location.href);
+  for (const key of ['empresa','empresaId']) {
+    if (params.has(key)) {
+      clientUrl.searchParams.set(key, params.get(key));
+      deliveryUrl.searchParams.set(key, params.get(key));
+    }
+  }
+  addButton('ACESSO / CADASTRO DO CLIENTE',clientUrl.toString());
+  addButton('ACESSO DO ENTREGADOR',deliveryUrl.toString(),true);
+  addButton('VER TODOS OS APLICATIVOS E DOWNLOADS',releasePage,true);
+  info.textContent='Se você recebeu um convite, peça para a empresa reenviar o link específico do seu perfil.';
 }
 
 document.getElementById('customerForm').addEventListener('submit',async(event)=>{
