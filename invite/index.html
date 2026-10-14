@@ -237,7 +237,11 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora você pode instalar o aplicativo do Cliente para fazer pedidos.');
     msg.textContent='Cadastro concluído — agora você pode baixar o aplicativo para fazer seu pedido.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('ABRIR APLICATIVO E FAZER PEDIDO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):'')+'&empresaId='+encodeURIComponent(companyId)+'&clienteId='+encodeURIComponent(id),true);
+    const customerAppUrl = 'aguagasexpress://invite?perfil=cliente'
+      + '&empresa=' + encodeURIComponent(empresa)
+      + '&empresaId=' + encodeURIComponent(companyId)
+      + '&clienteId=' + encodeURIComponent(id);
+    addButton('ABRIR APLICATIVO E FAZER PEDIDO', customerAppUrl, true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
