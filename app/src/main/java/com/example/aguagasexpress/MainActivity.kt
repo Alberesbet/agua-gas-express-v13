@@ -1603,7 +1603,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var firstSetup by remember { mutableStateOf(false) }
     var adminBiometricOptIn by remember { mutableStateOf(prefs.getBoolean("admin_biometric_enabled", false)) }
     var deliveryBiometricOptIn by remember { mutableStateOf(prefs.getBoolean("delivery_biometric_enabled", false)) }
-    var products by remember { mutableStateOf(loadProducts(prefs)) }
+    // O cliente nunca deve exibir o catálogo local/demonstração enquanto o Firebase carrega.
+    // A configuração remota da empresa vinculada é a única fonte oficial para clientes.
+    var products by remember { mutableStateOf(if (prefs.getString("company_role", "").equals("customer", ignoreCase = true)) emptyList() else loadProducts(prefs)) }
     var newProductName by remember { mutableStateOf("") }
     var newProductPrice by remember { mutableStateOf("") }
     var newProductIsGas by remember { mutableStateOf(false) }
