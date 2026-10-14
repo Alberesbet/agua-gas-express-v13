@@ -11,13 +11,14 @@ android {
         applicationId = "com.example.aguagasexpress"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "13.3"
+        versionCode = 16
+        versionName = "13.4"
     }
     flavorDimensions += "perfil"
     productFlavors {
         create("desenvolvedor") {
             dimension = "perfil"
+            manifestPlaceholders["invitePathPrefix"] = "/invite/desenvolvedor"
             // Keep developer/admin data isolated from the company/client app.
             applicationIdSuffix = ".desenvolvedor"
             versionNameSuffix = "-desenvolvedor"
@@ -25,18 +26,21 @@ android {
         }
         create("empresa") {
             dimension = "perfil"
+            manifestPlaceholders["invitePathPrefix"] = "/invite/empresa"
             applicationIdSuffix = ".empresa"
             versionNameSuffix = "-empresa"
             buildConfigField("String", "DEFAULT_PROFILE", "\"empresa\"")
         }
         create("cliente") {
             dimension = "perfil"
+            manifestPlaceholders["invitePathPrefix"] = "/invite/cliente"
             applicationIdSuffix = ".cliente"
             versionNameSuffix = "-cliente"
             buildConfigField("String", "DEFAULT_PROFILE", "\"cliente\"")
         }
         create("entregador") {
             dimension = "perfil"
+            manifestPlaceholders["invitePathPrefix"] = "/invite/entregador"
             applicationIdSuffix = ".entregador"
             versionNameSuffix = "-entregador"
             buildConfigField("String", "DEFAULT_PROFILE", "\"entregador\"")
