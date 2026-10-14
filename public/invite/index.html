@@ -69,7 +69,7 @@ const registration = document.getElementById('registration');
 const downloads = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/';
 const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build';
 const apk = {
-  empresa: '',
+  empresa: downloads + 'AguaGasExpress-Empresa.apk',
   cliente: downloads + 'AguaGasExpress-Cliente.apk',
   entregador: downloads + 'AguaGasExpress-Entregador.apk',
   proprietario: downloads + 'AguaGasExpress-Desenvolvedor.apk'
@@ -112,9 +112,10 @@ if(perfil==='empresa'){
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
   title.textContent='Acesso da Empresa';
-  msg.textContent='Baixe o aplicativo da Empresa ou abra o painel no notebook.';
+  msg.textContent='Escolha como acessar: instale o aplicativo Android da Empresa ou entre pelo painel web. Use o mesmo código da empresa.';
   addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
-  addButton('ENTRAR PELA WEB — EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/empresa/?empresa='+encodeURIComponent(empresa),true);
+  addButton('ABRIR APLICATIVO DA EMPRESA','aguagasexpress://invite?perfil=empresa&empresa='+encodeURIComponent(empresa),true);
+  addButton('ENTRAR PELA WEB — EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
