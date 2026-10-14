@@ -2634,8 +2634,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     clientDocType = doc.getString("documentType")?.takeIf { it.isNotBlank() } ?: "CPF"
                                     clientDocNumber = doc.getString("documentNumber").orEmpty()
                                     clientCep = doc.getString("cep").orEmpty()
-                                    clientAddress = doc.getString("address").orEmpty()
-                                    clientHouseNumber = ""
+                                    clientAddress = doc.getString("street")?.takeIf { it.isNotBlank() } ?: doc.getString("address").orEmpty()
+                                    clientHouseNumber = doc.getString("houseNumber").orEmpty()
                                     prefs.edit().putString("client_name", clientName).putString("client_phone", clientPhone)
                                         .putString("client_doc_type", clientDocType).putString("client_doc_number", clientDocNumber)
                                         .putString("client_cep", clientCep).putString("client_street_address", clientAddress)
@@ -2755,6 +2755,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         "documentNumber" to normalizeDocument(clientDocNumber),
                                         "cep" to clientCep.trim(),
                                         "address" to savedAddress,
+                                        "street" to clientAddress.trim(),
+                                        "houseNumber" to clientHouseNumber.trim(),
                                         "companyId" to resolvedCompanyId,
                                         "companyCode" to resolvedCompanyCode,
                                         "inviteProfile" to "cliente",
@@ -2771,7 +2773,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                                 .putString("client_doc_number", normalizeDocument(clientDocNumber))
                                                 .putString("client_cep", clientCep.trim())
                                                 .putString("client_street_address", clientAddress.trim())
-                                                .putString("client_house_number", "")
+                                                .putString("client_house_number", clientHouseNumber.trim())
                                                 .putString("client_address", savedAddress)
                                                 .putString("client_customer_doc_id", customerRef.id)
                                                 .putBoolean("client_profile_saved", true).apply()
