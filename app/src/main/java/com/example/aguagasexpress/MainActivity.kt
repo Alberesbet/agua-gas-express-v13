@@ -1749,6 +1749,36 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         .remove("invite_company_code")
                         .remove("invite_company_id")
                         .apply()
+
+                    // Se o cliente já tinha cadastro neste aparelho, mover também o registro
+                    // existente para a empresa do novo convite, sem criar um cadastro incompleto.
+                    if (prefs.getBoolean("client_profile_saved", false)) {
+                        val phoneDigits = prefs.getString("client_phone", "").orEmpty().filter(Char::isDigit)
+                        if (phoneDigits.isNotBlank()) {
+                            val customerIds = listOf(
+                                prefs.getString("web_customer_doc_id", "").orEmpty(),
+                                customerDocumentId(phoneDigits),
+                                legacyCustomerDocumentId(phoneDigits)
+                            ).filter { it.isNotBlank() }.distinct()
+                            customerIds.forEach { customerId ->
+                                FirebaseFirestore.getInstance().collection("customers").document(customerId)
+                                    .get()
+                                    .addOnSuccessListener { customerDoc ->
+                                        if (customerDoc.exists()) {
+                                            customerDoc.reference.set(
+                                                mapOf(
+                                                    "companyId" to company.id,
+                                                    "companyCode" to normalizeCompanyCode(company.getString("companyCode").orEmpty()),
+                                                    "active" to true,
+                                                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                                ),
+                                                SetOptions.merge()
+                                            )
+                                        }
+                                    }
+                            }
+                        }
+                    }
                     firebaseStatus = "Convite vinculado à empresa $companyName."
                 }
             }
