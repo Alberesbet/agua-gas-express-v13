@@ -69,7 +69,7 @@ const status = document.getElementById('status');
 const registration = document.getElementById('registration');
 const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases/tag/latest-build';
 const downloadUrls = {
-  empresa: releasePage,
+  empresa: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Empresa.apk',
   cliente: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Cliente.apk',
   entregador: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Entregador.apk',
   proprietario: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Desenvolvedor.apk'
@@ -137,10 +137,12 @@ if(perfil==='cliente'){
   addButton('BAIXAR APLICATIVO DO ENTREGADOR',apk);
   info.textContent='Código da empresa: '+(empresa||'não informado')+(empresa?'. O acesso será vinculado a esta empresa.':'');
 }else if(perfil==='empresa'){
-  title.textContent='Aplicativo da Empresa';
-  msg.textContent='Toque no botão abaixo para abrir a página de versões do aplicativo da Empresa. Use o código do convite para acessar o painel.';
-  addButton('ACESSAR APLICATIVO DA EMPRESA', 'https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa));
-  info.textContent='Código da empresa: '+(empresa||'não informado');
+  title.textContent='Acesso da Empresa';
+  msg.textContent='Escolha como deseja acessar: instale o aplicativo Android da Empresa ou abra o painel pela web. Use o código do convite em qualquer opção.';
+  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
+  addButton('ABRIR APLICATIVO DA EMPRESA','aguagasexpress://invite?perfil=empresa&empresa='+encodeURIComponent(empresa),true);
+  addButton('ENTRAR PELA WEB — EMPRESA','https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?empresa='+encodeURIComponent(empresa),true);
+  info.textContent='Código da empresa: '+(empresa||'não informado')+'. O cadastro/acesso usa o mesmo código no aplicativo e na web.';
 }else if(perfil==='proprietario'){
   title.textContent='Aplicativo do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor para cadastrar empresas e enviar o convite de acesso.';
