@@ -1733,6 +1733,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var salesMonthlyWater by remember { mutableStateOf(0) }
     var salesMonthlyGas by remember { mutableStateOf(0) }
     var registeredCustomerCount by remember { mutableStateOf(0) }
+    var registeredCustomers by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var showCustomersDeleteDialog by remember { mutableStateOf(false) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
     var apkOperationInProgress by remember { mutableStateOf(false) }
@@ -1991,7 +1993,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         firebaseStatus = "Clientes: não foi possível atualizar a quantidade (${error.localizedMessage ?: "erro"})"
                         return@addSnapshotListener
                     }
-                    registeredCustomerCount = snapshot?.documents?.count { it.getBoolean("active") != false } ?: 0
+                    val companyCustomers = snapshot?.documents?.filter {
+                        it.getBoolean("active") != false && it.getString("companyId") == companyId
+                    }.orEmpty()
+                    registeredCustomers = companyCustomers.map { doc ->
+                        doc.id to (doc.getString("name")?.ifBlank { null } ?: doc.getString("phone") ?: "Cliente sem nome")
+                    }
+                    registeredCustomerCount = companyCustomers.size
                 }.also { registration ->
                     // A referência fica vinculada ao ciclo de tela abaixo por meio da lista auxiliar.
                     customerRegistration = registration
@@ -3074,23 +3082,54 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
                 // Botão de convite em destaque logo abaixo do resumo de clientes.
+                val activeCompanyCode = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
+                val activeCompanyId = companyId.ifBlank { prefs.getString("company_id", "").orEmpty() }
                 MainButton("🔗 ENVIAR LINK DO CLIENTE") {
-                    val code = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
-                    val activeCompanyId = companyId.ifBlank { prefs.getString("company_id", "").orEmpty() }
-                    if (activeCompanyId.isBlank() || code.isBlank()) {
+                    if (activeCompanyId.isBlank() || activeCompanyCode.isBlank()) {
                         message = "Não foi possível identificar esta empresa. Saia da conta e entre novamente."
                     } else {
-                        val link = makeInviteLink("cliente", code, activeCompanyId)
-                        val shareText = "🛒 Água & Gás Express — Cadastro de cliente\\n\\n$link\\n\\nAbra este link para se cadastrar e ver os produtos, preços e Pix atualizados desta empresa."
-                        try {
-                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            }, "Enviar link do cliente"))
-                        } catch (e: Exception) {
-                            message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}"
-                        }
+                        val link = makeInviteLink("cliente", activeCompanyCode, activeCompanyId)
+                        val shareText = "Água & Gás Express — Cadastro do cliente\\n$link"
+                        try { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText)
+                        }, "Enviar link do cliente")) } catch (e: Exception) { message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}" }
                     }
+                }
+                MainButton("🚚 ENVIAR LINK DO ENTREGADOR") {
+                    if (activeCompanyId.isBlank() || activeCompanyCode.isBlank()) {
+                        message = "Não foi possível identificar esta empresa. Saia da conta e entre novamente."
+                    } else {
+                        val link = makeInviteLink("entregador", activeCompanyCode, activeCompanyId)
+                        val shareText = "Água & Gás Express — Cadastro do entregador\\n$link"
+                        try { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText)
+                        }, "Enviar link do entregador")) } catch (e: Exception) { message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}" }
+                    }
+                }
+                MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
+                if (showCustomersDeleteDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showCustomersDeleteDialog = false },
+                        title = { Text("Excluir cliente") },
+                        text = {
+                            if (registeredCustomers.isEmpty()) Text("Não há clientes ativos cadastrados nesta empresa.")
+                            else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Escolha o cliente que deseja excluir. A exclusão remove o cadastro da lista desta empresa.")
+                                registeredCustomers.forEach { (docId, customerName) ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                        Text(customerName, modifier = Modifier.weight(1f), color = Color.DarkGray)
+                                        TextButton(onClick = {
+                                            FirebaseFirestore.getInstance().collection("customers").document(docId).delete()
+                                                .addOnSuccessListener { message = "Cadastro de $customerName excluído."; showCustomersDeleteDialog = false }
+                                                .addOnFailureListener { error -> message = "Não foi possível excluir: ${error.localizedMessage ?: "erro"}" }
+                                        }) { Text("Excluir", color = Color.Red) }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showCustomersDeleteDialog = false }) { Text("Fechar") }
+                        }
+                    )
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
