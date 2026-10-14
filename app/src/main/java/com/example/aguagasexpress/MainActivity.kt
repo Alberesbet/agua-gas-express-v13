@@ -1021,13 +1021,18 @@ private fun shareLatestApk(
     }
     val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
     val normalizedCode = normalizeCompanyCode(companyCode)
-    val inviteUrl = if (normalizedRole == "cliente" && normalizedCode.isNotBlank() && companyId.isNotBlank()) {
-        makeInviteLink("cliente", normalizedCode, companyId)
+    val inviteUrl = if (
+        normalizedRole in setOf("cliente", "entregador") &&
+        normalizedCode.isNotBlank() && companyId.isNotBlank()
+    ) {
+        makeInviteLink(normalizedRole, normalizedCode, companyId)
     } else ""
     val shareText = if (inviteUrl.isNotBlank()) {
-        "Água & Gás Express — LINK ÚNICO DO CLIENTE\n\n" +
+        val recipient = if (normalizedRole == "entregador") "entregador" else "cliente"
+        val inviteTitle = if (normalizedRole == "entregador") "LINK ÚNICO DO ENTREGADOR" else "LINK ÚNICO DO CLIENTE"
+        "Água & Gás Express — $inviteTitle\n\n" +
             "$inviteUrl\n\n" +
-            "Envie somente este link ao cliente. Se o aplicativo ainda não estiver instalado, o link inicia o download. Depois de instalar, toque novamente neste mesmo link para abrir o cadastro já vinculado à empresa $normalizedCode. Não envie um segundo link de APK."
+            "Envie somente este link ao $recipient. Se o aplicativo ainda não estiver instalado, o link inicia o download. Depois de instalar, toque novamente neste mesmo link para abrir o cadastro já vinculado à empresa $normalizedCode. Não envie um segundo link de APK."
     } else {
         "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
     }
@@ -3213,9 +3218,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
                     }
                 }
-                // Compartilha os APKs publicados da versão mais recente, sem links de cadastro.
+                // Compartilha convites vinculados à empresa para cliente e entregador.
                 MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk(context, "cliente", prefs.getString("company_code", "").orEmpty(), companyId) }
-                MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk(context, "entregador") }
+                MainButton("🚚 ENVIAR LINK DO ENTREGADOR") { shareLatestApk(context, "entregador", prefs.getString("company_code", "").orEmpty(), companyId) }
                 MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
                 if (showCustomersDeleteDialog) {
                     AlertDialog(
