@@ -1184,22 +1184,33 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     }
 
     fun shareLatestApk(role: String) {
-        val isClient = role.equals("cliente", ignoreCase = true)
-        val label = if (isClient) "Cliente" else "Entregador"
-        val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+        val normalizedRole = role.lowercase(Locale.ROOT)
+        val label = when (normalizedRole) {
+            "cliente" -> "Cliente"
+            "entregador" -> "Entregador"
+            else -> "Empresa"
+        }
+        val fileName = when (normalizedRole) {
+            "cliente" -> "AguaGasExpress-Cliente.apk"
+            "entregador" -> "AguaGasExpress-Entregador.apk"
+            else -> "AguaGasExpress-Empresa.apk"
+        }
         val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
-        val message = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
+        val shareText = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
         try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
-                putExtra(Intent.EXTRA_TEXT, message)
+                putExtra(Intent.EXTRA_TEXT, shareText)
             }, "Enviar APK do $label"))
             masterStatus = "Link para baixar o APK do $label preparado para envio."
             masterCompanyMessage = "Link para baixar o APK do $label preparado para envio."
+            message = "Link para baixar o APK do $label preparado para envio."
         } catch (e: Exception) {
-            masterStatus = "Não foi possível compartilhar o APK do $label: ${e.localizedMessage ?: "tente novamente"}"
-            masterCompanyMessage = masterStatus
+            val errorText = "Não foi possível compartilhar o APK do $label: ${e.localizedMessage ?: "tente novamente"}"
+            masterStatus = errorText
+            masterCompanyMessage = errorText
+            message = errorText
         }
     }
 
@@ -1399,9 +1410,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { shareLatestApk("cliente") }, modifier = Modifier.fillMaxWidth()) { Text("📲 ENVIAR APK DO CLIENTE") }
-                Spacer(Modifier.height(6.dp))
-                Button(onClick = { shareLatestApk("entregador") }, modifier = Modifier.fillMaxWidth()) { Text("🛵 ENVIAR APK DO ENTREGADOR") }
+                Button(onClick = { shareLatestApk("empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { masterCompanyDetailsOpen = false; masterCompanyMessage = "" }) { Text("VOLTAR", color = Color.White) }
             } else {
@@ -1416,9 +1425,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     }
                     Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
                     Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
-                    Button(onClick = { shareLatestApk("cliente") }, modifier = Modifier.fillMaxWidth()) { Text("📲 ENVIAR APK DO CLIENTE") }
-                Spacer(Modifier.height(6.dp))
-                Button(onClick = { shareLatestApk("entregador") }, modifier = Modifier.fillMaxWidth()) { Text("🛵 ENVIAR APK DO ENTREGADOR") }
+                    Button(onClick = { shareLatestApk("empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -3129,31 +3136,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
                     }
                 }
-                // Botão de convite em destaque logo abaixo do resumo de clientes.
-                val activeCompanyCode = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
-                val activeCompanyId = companyId.ifBlank { prefs.getString("company_id", "").orEmpty() }
-                MainButton("🔗 ENVIAR LINK DO CLIENTE") {
-                    if (activeCompanyId.isBlank() || activeCompanyCode.isBlank()) {
-                        message = "Não foi possível identificar esta empresa. Saia da conta e entre novamente."
-                    } else {
-                        val link = makeInviteLink("cliente", activeCompanyCode, activeCompanyId)
-                        val shareText = "Água & Gás Express — Cadastro do cliente\\n$link"
-                        try { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText)
-                        }, "Enviar link do cliente")) } catch (e: Exception) { message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}" }
-                    }
-                }
-                MainButton("🚚 ENVIAR LINK DO ENTREGADOR") {
-                    if (activeCompanyId.isBlank() || activeCompanyCode.isBlank()) {
-                        message = "Não foi possível identificar esta empresa. Saia da conta e entre novamente."
-                    } else {
-                        val link = makeInviteLink("entregador", activeCompanyCode, activeCompanyId)
-                        val shareText = "Água & Gás Express — Cadastro do entregador\\n$link"
-                        try { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"; putExtra(Intent.EXTRA_TEXT, shareText)
-                        }, "Enviar link do entregador")) } catch (e: Exception) { message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}" }
-                    }
-                }
+                // Compartilha os APKs publicados da versão mais recente, sem links de cadastro.
+                MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk("cliente") }
+                MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk("entregador") }
                 MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
                 if (showCustomersDeleteDialog) {
                     AlertDialog(
