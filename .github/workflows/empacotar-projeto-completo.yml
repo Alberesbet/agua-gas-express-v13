@@ -1,0 +1,42 @@
+name: Empacotar projeto completo com APKs atuais
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/empacotar-projeto-completo.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  zip-projeto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código atual
+        uses: actions/checkout@v4
+      - name: Baixar os APKs da versão atual
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "APKs-atuais"
+          base="https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest"
+          for apk in AguaGasExpress-Cliente.apk AguaGasExpress-Empresa.apk AguaGasExpress-Entregador.apk AguaGasExpress-Desenvolvedor.apk; do
+            curl -fL --retry 3 "$base/$apk" -o "APKs-atuais/$apk"
+          done
+          ls -lh APKs-atuais
+      - name: Montar ZIP completo
+        run: |
+          mkdir -p entrega
+          cp -a . entrega/Agua-Gas-Express
+          rm -rf entrega/Agua-Gas-Express/.git
+          cd entrega
+          zip -qr ../Agua-Gas-Express-Projeto-Completo-com-APKs-Atuais.zip Agua-Gas-Express
+      - name: Disponibilizar ZIP para baixar
+        uses: actions/upload-artifact@v4
+        with:
+          name: Agua-Gas-Express-Projeto-Completo-com-APKs-Atuais
+          path: Agua-Gas-Express-Projeto-Completo-com-APKs-Atuais.zip
+          if-no-files-found: error
+          retention-days: 30
