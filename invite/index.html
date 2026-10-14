@@ -101,19 +101,20 @@ const appPackages = {
   entregador: 'com.example.aguagasexpress.entregador',
   proprietario: 'com.example.aguagasexpress.desenvolvedor'
 };
-function appIntentUrl(extraQuery=''){
+function appIntentUrl(extraQuery='', fallbackUrl=''){
   const packageName = appPackages[perfil];
   if(!packageName) return '#';
   const companyParam = empresa ? '&empresa='+encodeURIComponent(empresa) : '';
   const companyIdParam = empresaId ? '&empresaId='+encodeURIComponent(empresaId) : '';
+  const fallbackParam = fallbackUrl ? ';S.browser_fallback_url='+encodeURIComponent(fallbackUrl) : '';
   return 'intent://invite?perfil='+encodeURIComponent(perfil)+companyParam+companyIdParam+extraQuery
-    +'&plataforma=android#Intent;scheme=aguagasexpress;package='+packageName+';end';
+    +'&plataforma=android#Intent;scheme=aguagasexpress;package='+packageName+fallbackParam+';end';
 }
-function addOpenAppButton(label, extraQuery=''){
+function addOpenAppButton(label, extraQuery='', fallbackUrl=''){
   const a=addButton(label,'#',true);
   a.addEventListener('click',function(event){
     event.preventDefault();
-    window.location.href=appIntentUrl(extraQuery);
+    window.location.href=appIntentUrl(extraQuery, fallbackUrl);
   });
   return a;
 }
@@ -164,16 +165,16 @@ async function customerDocId(phone){
 }
 
 if(perfil==='cliente'){
-  title.textContent='Cadastro do Cliente';
+  title.textContent='Aplicativo do Cliente';
   if(empresa){
-    registration.classList.remove('hidden');
-    msg.textContent='Convite da empresa '+empresa+'. Preencha seus dados abaixo para registrar seu cadastro diretamente nessa empresa.';
+    msg.textContent='Convite da empresa '+empresa+'. Toque no botão abaixo: se o aplicativo já estiver instalado, ele abrirá vinculado a esta empresa; se não estiver, o APK será baixado.';
+    info.textContent='Se o APK baixar, instale-o e volte a este mesmo convite para tocar no botão novamente. Assim o aplicativo recebe o vínculo correto da empresa.';
   }else{
-    msg.textContent='Para vincular seu cadastro a uma empresa, abra o link de convite enviado por ela.';
+    msg.textContent='Para abrir o aplicativo já vinculado, use o convite que a empresa enviou com o código dela.';
+    info.textContent='';
   }
-  addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-  addOpenAppButton('JÁ INSTALEI — ABRIR APLICATIVO');
-  info.textContent=empresa ? 'Código da empresa: '+empresa+'. O cadastro será gravado com o ID e o código desta empresa.' : '';
+  // Um único botão: abre o app com os dados do convite ou baixa o APK se ainda não estiver instalado.
+  addOpenAppButton('ABRIR / BAIXAR APLICATIVO DO CLIENTE','',apk);
 }else if(perfil==='entregador'){
   title.textContent='Aplicativo do Entregador';
   msg.textContent='Toque no botão abaixo para baixar o aplicativo do Entregador. Depois, abra o app e entre usando o convite da empresa.';
