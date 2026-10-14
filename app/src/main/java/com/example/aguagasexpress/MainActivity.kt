@@ -1183,6 +1183,26 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível acrescentar dias: ${e.localizedMessage ?: "erro no Firebase"}" }
     }
 
+    fun shareLatestApk(role: String) {
+        val isClient = role.equals("cliente", ignoreCase = true)
+        val label = if (isClient) "Cliente" else "Entregador"
+        val fileName = if (isClient) "AguaGasExpress-Cliente.apk" else "AguaGasExpress-Entregador.apk"
+        val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
+        val message = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
+        try {
+            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
+                putExtra(Intent.EXTRA_TEXT, message)
+            }, "Enviar APK do $label"))
+            masterStatus = "Link para baixar o APK do $label preparado para envio."
+            masterCompanyMessage = "Link para baixar o APK do $label preparado para envio."
+        } catch (e: Exception) {
+            masterStatus = "Não foi possível compartilhar o APK do $label: ${e.localizedMessage ?: "tente novamente"}"
+            masterCompanyMessage = masterStatus
+        }
+    }
+
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
@@ -1379,7 +1399,9 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
+                Button(onClick = { shareLatestApk("cliente") }, modifier = Modifier.fillMaxWidth()) { Text("📲 ENVIAR APK DO CLIENTE") }
+                Spacer(Modifier.height(6.dp))
+                Button(onClick = { shareLatestApk("entregador") }, modifier = Modifier.fillMaxWidth()) { Text("🛵 ENVIAR APK DO ENTREGADOR") }
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { masterCompanyDetailsOpen = false; masterCompanyMessage = "" }) { Text("VOLTAR", color = Color.White) }
             } else {
@@ -1394,7 +1416,9 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     }
                     Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
                     Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
-                    Button(onClick = { shareCompanyLink(masterCompanyCode, masterCompanyEmail) }, modifier = Modifier.fillMaxWidth()) { Text("🔗 ENVIAR LINK ÚNICO DA EMPRESA") }
+                    Button(onClick = { shareLatestApk("cliente") }, modifier = Modifier.fillMaxWidth()) { Text("📲 ENVIAR APK DO CLIENTE") }
+                Spacer(Modifier.height(6.dp))
+                Button(onClick = { shareLatestApk("entregador") }, modifier = Modifier.fillMaxWidth()) { Text("🛵 ENVIAR APK DO ENTREGADOR") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
