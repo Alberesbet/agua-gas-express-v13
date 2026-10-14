@@ -72,7 +72,7 @@ import kotlinx.coroutines.delay
 
 private val Navy = Color(0xFF0B1730)
 private val Blue = Color(0xFF1688E8)
-private val LightBlue = Color(0xFFB91C1C)
+private val LightBlue = Color(0xFF1688E8)
 private val PanelRed = Color(0xFF7F1D1D)
 private val Orange = Color(0xFFFF8A32)
 private val Ink = Color(0xFF18253A)
@@ -315,6 +315,7 @@ class MainActivity : ComponentActivity() {
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
         if (inviteCompanyId.isNotBlank()) editor.putString("invite_company_id", inviteCompanyId)
         else if (inviteCompanyCode.isNotBlank()) editor.remove("invite_company_id")
+        if (inviteProfile == "cliente") editor.remove("pending_company_id")
         if (inviteProfile == "cliente") {
             // Preservece o cadastro local já concluído. O link deve vincular a empresa,
             // não apagar os dados e forçar o cliente a se cadastrar a cada abertura.
@@ -2702,7 +2703,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val parts = listOf(result.optString("logradouro"), result.optString("bairro"), listOf(result.optString("localidade"), result.optString("uf")).filter { it.isNotBlank() }.joinToString(" - "))
                                     .filter { it.isNotBlank() && it != "null" }
                                 clientAddress = parts.joinToString(", ")
-                                message = if (clientAddress.isBlank()) "CEP localizado. Preencha o endereço manualmente." else "Endereço localizado. Informe o número da casa abaixo."
+                                message = if (clientAddress.isBlank()) "CEP localizado. Preencha o endereço manualmente." else "Endereço localizado."
                             }
                         }
                     }
@@ -2711,7 +2712,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("Endereço encontrado pelo CEP", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
-                    InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
                     MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
@@ -2721,8 +2721,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             clientPhone.filter { it.isDigit() }.isBlank() -> message = "Informe seu telefone."
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
-                            clientHouseNumber.isBlank() -> message = "Informe o número da casa."
-                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() -> message = "Este aplicativo ainda não está vinculado a uma empresa. Abra primeiro o link de convite enviado pela empresa e depois faça o cadastro."
+                            companyId.isBlank() &&
+                                prefs.getString("invite_company_id", "").orEmpty().isBlank() &&
+                                prefs.getString("pending_company_id", "").orEmpty().isBlank() ->
+                                message = "Este aplicativo ainda não está vinculado a uma empresa. Abra o link de convite enviado pela empresa e tente novamente."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
@@ -2730,8 +2732,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 // novo aparelho, reinstalação ou um segundo cadastro.
                                 val customerRef = firestore.collection("customers").document()
                                 fun saveRegistration(uid: String) {
-                                    val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
-                                    val resolvedCompanyId = companyId.ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
+                                    val savedAddress = clientAddress.trim()
+                                    val resolvedCompanyId = companyId.ifBlank {
+                                        prefs.getString("invite_company_id", "").orEmpty()
+                                            .ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
+                                    }
                                     val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("invite_company_code", "").orEmpty() }.ifBlank { prefs.getString("company_code", "").orEmpty() })
                                     if (resolvedCompanyId.isBlank()) {
                                         customerAccessLoading = false
@@ -2762,7 +2767,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                                 .putString("client_doc_number", normalizeDocument(clientDocNumber))
                                                 .putString("client_cep", clientCep.trim())
                                                 .putString("client_street_address", clientAddress.trim())
-                                                .putString("client_house_number", clientHouseNumber.trim())
+                                                .putString("client_house_number", "")
                                                 .putString("client_address", savedAddress)
                                                 .putString("client_customer_doc_id", customerRef.id)
                                                 .putBoolean("client_profile_saved", true).apply()
