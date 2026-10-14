@@ -289,10 +289,23 @@ class MainActivity : ComponentActivity() {
         // Convites de cliente/entregador sempre substituem o papel anterior do aparelho.
         // Isso impede que a tela antiga de três perfis seja reaproveitada.
         if (inviteProfile == "cliente" || inviteProfile == "entregador") {
-            editor.remove("company_id").remove("company_role").remove("company_authenticated")
+            // Um convite novo é a autoridade da empresa. Nunca reaproveitar o ID,
+            // catálogo ou Pix da empresa aberta anteriormente neste aparelho.
+            editor.remove("company_id")
+                .remove("company_name")
+                .remove("company_code")
+                .remove("company_role")
+                .remove("company_authenticated")
+                .remove("products_json")
+                .remove("pix_key")
+                .remove("pix_key_type")
+                .remove("pix_recipient_name")
+                .remove("company_phone")
+                .remove("company_email")
         }
         if (inviteCompanyCode.isNotBlank()) editor.putString("invite_company_code", inviteCompanyCode)
         if (inviteCompanyId.isNotBlank()) editor.putString("invite_company_id", inviteCompanyId)
+        else if (inviteCompanyCode.isNotBlank()) editor.remove("invite_company_id")
         if (inviteProfile == "cliente") {
             // Preservece o cadastro local já concluído. O link deve vincular a empresa,
             // não apagar os dados e forçar o cliente a se cadastrar a cada abertura.
@@ -1644,7 +1657,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var firebaseStatus by remember { mutableStateOf("Conectando ao Firebase…") }
     LaunchedEffect(invitedCompanyCode, prefs.getString("invite_company_id", "")) {
         val invitedCompanyId = prefs.getString("invite_company_id", "").orEmpty()
-        if ((invitedCompanyCode.isNotBlank() || invitedCompanyId.isNotBlank()) && companyId.isBlank()) {
+        if ((invitedCompanyCode.isNotBlank() || invitedCompanyId.isNotBlank()) &&
+            (companyId.isBlank() || companyId != invitedCompanyId && invitedCompanyId.isNotBlank())) {
             val companies = FirebaseFirestore.getInstance().collection("companies")
             fun applyResolvedCompany(company: com.google.firebase.firestore.DocumentSnapshot?) {
                 if (company == null || !company.exists() || (invitedCompanyCode.isNotBlank() && normalizeCompanyCode(company.getString("companyCode").orEmpty()) != normalizeCompanyCode(invitedCompanyCode))) {
@@ -1652,12 +1666,21 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 } else if (company.getBoolean("active") == false) {
                     firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
                 } else {
+                    // ID do convite prevalece sobre qualquer e-mail repetido no Firebase.
+                    if (invitedCompanyId.isNotBlank() && company.id != invitedCompanyId) {
+                        firebaseStatus = "O convite aponta para outra empresa. Peça um link atualizado à empresa."
+                        return
+                    }
                     companyId = company.id
                     companyName = company.getString("name") ?: "Empresa"
                     prefs.edit()
                         .putString("company_id", company.id)
                         .putString("company_name", companyName)
                         .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
+                        .remove("products_json")
+                        .remove("pix_key")
+                        .remove("pix_key_type")
+                        .remove("pix_recipient_name")
                         .remove("invite_company_code")
                         .remove("invite_company_id")
                         .apply()
