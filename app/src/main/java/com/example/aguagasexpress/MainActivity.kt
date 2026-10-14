@@ -1419,7 +1419,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     }
                     Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
                     Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
-                    Button(onClick = { shareLatestApk("empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
+                    Button(onClick = { shareLatestApk(LocalContext.current, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
