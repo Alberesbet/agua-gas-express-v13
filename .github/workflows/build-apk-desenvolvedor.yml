@@ -22,11 +22,17 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Permitir executar Gradle
-        run: chmod +x gradlew
+      - name: Instalar Gradle 8.13 com permissão de execução
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle-8.13-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-8.13-bin.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
 
       - name: Compilar APK Desenvolvedor
-        run: ./gradlew --no-daemon :app:assembleDesenvolvedorDebug
+        run: "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --build-cache :app:assembleDesenvolvedorDebug
 
       - name: Publicar APK como artefato
         uses: actions/upload-artifact@v4
