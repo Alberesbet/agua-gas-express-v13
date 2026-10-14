@@ -40,6 +40,15 @@ jobs:
           cp invite/index.html public/invite/index.html
           test -s public/invite/index.html
 
+          # Os links enviados pela empresa usam caminhos próprios por perfil.
+          # Publicar a mesma página-base nesses caminhos garante que /cliente/ e
+          # /entregador/ abram o convite e preservem os parâmetros da empresa.
+          for profile in cliente entregador desenvolvedor; do
+            mkdir -p "public/invite/$profile"
+            cp invite/index.html "public/invite/$profile/index.html"
+            test -s "public/invite/$profile/index.html"
+          done
+
       - name: Publicar tela real de acesso da Empresa dentro do link de convite
         shell: bash
         run: |
