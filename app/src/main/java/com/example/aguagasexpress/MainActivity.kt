@@ -2737,7 +2737,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 // novo aparelho, reinstalação ou um segundo cadastro.
                                 val customerRef = firestore.collection("customers").document()
                                 fun saveRegistration(uid: String) {
-                                    val savedAddress = clientAddress.trim()
+                                    val savedAddress = listOf(clientAddress.trim(), clientHouseNumber.trim()).filter { it.isNotBlank() }.joinToString(", ")
                                     // Não salvar cadastro sob um ID não confirmado: isso evita
                                     // vincular o cliente a uma empresa antiga ou sem catálogo/Pix.
                                     val resolvedCompanyId = companyId
