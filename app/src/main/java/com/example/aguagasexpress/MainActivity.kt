@@ -3073,16 +3073,15 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
-                }
+                // Botão de convite em destaque logo abaixo do resumo de clientes.
                 MainButton("🔗 ENVIAR LINK DO CLIENTE") {
                     val code = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
-                    if (companyId.isBlank() || code.isBlank()) {
-                        message = "Não foi possível identificar esta empresa. Saia e entre novamente na conta da empresa."
+                    val activeCompanyId = companyId.ifBlank { prefs.getString("company_id", "").orEmpty() }
+                    if (activeCompanyId.isBlank() || code.isBlank()) {
+                        message = "Não foi possível identificar esta empresa. Saia da conta e entre novamente."
                     } else {
-                        val link = makeInviteLink("cliente", code, companyId)
-                        val shareText = "🛒 Água & Gás Express — Faça seu cadastro como cliente desta empresa.\\n\\n$link\\n\\nAbra este link para acessar o catálogo atualizado, consultar os preços e fazer pedidos diretamente para nossa empresa."
+                        val link = makeInviteLink("cliente", code, activeCompanyId)
+                        val shareText = "🛒 Água & Gás Express — Cadastro de cliente\\n\\n$link\\n\\nAbra este link para se cadastrar e ver os produtos, preços e Pix atualizados desta empresa."
                         try {
                             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
@@ -3092,6 +3091,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}"
                         }
                     }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
                 if (showShareLinksDialog) {
                     AlertDialog(
