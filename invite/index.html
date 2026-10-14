@@ -42,9 +42,8 @@ a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1
 <p class="small" id="info"></p>
 </main>
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+let initializeApp, getAuth, signInAnonymously;
+let getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, limit, serverTimestamp;
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
@@ -57,9 +56,18 @@ const firebaseConfig = {
 let auth = null;
 let db = null;
 let firebaseInitError = null;
-function ensureFirebase(){
+async function ensureFirebase(){
   if(auth && db) return;
   try {
+    const [appModule, authModule, firestoreModule] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js')
+    ]);
+    initializeApp = appModule.initializeApp;
+    getAuth = authModule.getAuth;
+    signInAnonymously = authModule.signInAnonymously;
+    ({getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, limit, serverTimestamp} = firestoreModule);
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
@@ -179,7 +187,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
   if(documentNumber && ((docType==='CPF'&&documentNumber.length!==11)||(docType==='CNPJ'&&documentNumber.length!==14)||!docType)){showStatus('Confira o tipo e o número do CPF/CNPJ, ou deixe o documento em branco.');return;}
   button.disabled=true;button.textContent='ENVIANDO CADASTRO…';
   try{
-    ensureFirebase();
+    await ensureFirebase();
     const credential=await signInAnonymously(auth);
     const uid=credential.user.uid;
     const address=street+', '+number;
