@@ -1,0 +1,49 @@
+name: Build APK Desenvolvedor
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Permitir executar Gradle
+        run: chmod +x gradlew
+
+      - name: Compilar APK Desenvolvedor
+        run: ./gradlew --no-daemon :app:assembleDesenvolvedorDebug
+
+      - name: Publicar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: Agua-Gas-Express-Desenvolvedor-APK
+          path: app/build/outputs/apk/desenvolvedor/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar APK para baixar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desenvolvedor-atual
+          name: APK Atual do Desenvolvedor
+          body: APK de depuração compilado automaticamente a partir da versão atual do branch master.
+          files: app/build/outputs/apk/desenvolvedor/debug/*.apk
+          overwrite_files: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
