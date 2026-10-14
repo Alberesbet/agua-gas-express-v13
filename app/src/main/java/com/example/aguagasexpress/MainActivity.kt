@@ -360,9 +360,23 @@ class MainActivity : ComponentActivity() {
             val profileEditor = prefs.edit()
                 .putString("company_role", if (defaultProfile == "cliente") "customer" else "delivery")
                 .remove("invite_profile")
-            // Preserve the company code when the APK was opened from a company invite.
-            // The customer/driver screen resolves this code to the real Firestore company ID.
-            if (!hasInvite) profileEditor.remove("invite_company_code")
+            if (!hasInvite) {
+                profileEditor.remove("invite_company_code").remove("invite_company_id")
+                if (defaultProfile == "cliente") {
+                    // Never reuse a company_id left behind by an older client/company session.
+                    // Restore only an association explicitly saved from a verified client invite.
+                    val linkedClientCompanyId = prefs.getString("client_company_id", "").orEmpty()
+                    if (linkedClientCompanyId.isNotBlank()) {
+                        profileEditor.putString("company_id", linkedClientCompanyId)
+                            .putString("company_name", prefs.getString("client_company_name", "Empresa"))
+                            .putString("company_code", prefs.getString("client_company_code", ""))
+                    } else {
+                        profileEditor.remove("company_id").remove("company_name").remove("company_code")
+                            .remove("products_json").remove("pix_key").remove("pix_key_type")
+                            .remove("pix_recipient_name").remove("company_phone").remove("company_email")
+                    }
+                }
+            }
             profileEditor.apply()
         } else if (!hasInvite &&
             !( !prefs.getString("company_id", "").isNullOrBlank() &&
@@ -1738,7 +1752,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                     companyId = company.id
                     companyName = company.getString("name") ?: "Empresa"
-                    prefs.edit()
+                    val companyPrefs = prefs.edit()
                         .putString("company_id", company.id)
                         .putString("company_name", companyName)
                         .putString("company_code", company.getString("companyCode") ?: invitedCompanyCode)
@@ -1748,7 +1762,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         .remove("pix_recipient_name")
                         .remove("invite_company_code")
                         .remove("invite_company_id")
-                        .apply()
+                    if (BuildConfig.DEFAULT_PROFILE == "cliente") {
+                        companyPrefs.putString("client_company_id", company.id)
+                            .putString("client_company_name", companyName)
+                            .putString("client_company_code", company.getString("companyCode") ?: invitedCompanyCode)
+                    }
+                    companyPrefs.apply()
 
                     // Se o cliente já tinha cadastro neste aparelho, mover também o registro
                     // existente para a empresa do novo convite, sem criar um cadastro incompleto.
@@ -2556,17 +2575,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             Page.CUSTOMER -> {
                 Header("Faça seu pedido", "🛍️")
                 if (!clientProfileSaved && customerAccessMode == "choice") {
-                    Text("Você já tem cadastro?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text("Para começar, faça seu cadastro.", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(14.dp))
-                    MainButton("ENTRAR") {
-                        // Permite abrir a tela de pedidos sem solicitar telefone ou senha.
-                        // O telefone continua sendo usado somente para impedir cadastros duplicados.
-                        message = ""
-                        customerAccessMode = "orders"
-                        clientProfileSaved = true
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    MainButton("FAZER CADASTRO") { message = ""; customerAccessMode = "register" }
+                    MainButton("CADASTRAR") { message = ""; customerAccessMode = "register" }
                     ErrorText(message)
                     BackButton { page = Page.HOME }
                 } else if (!clientProfileSaved && customerAccessMode == "login") {
@@ -2668,7 +2679,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
                             clientHouseNumber.isBlank() -> message = "Informe o número da casa."
-                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() -> message = "Aguarde a confirmação da empresa e tente novamente."
+                            companyId.isBlank() && prefs.getString("pending_company_id", "").orEmpty().isBlank() -> message = "Este aplicativo ainda não está vinculado a uma empresa. Abra primeiro o link de convite enviado pela empresa e depois faça o cadastro."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
