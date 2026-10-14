@@ -1750,11 +1750,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 } else if (company.getBoolean("active") == false) {
                     firebaseStatus = "Esta empresa está temporariamente desativada. Entre em contato com a empresa."
                 } else {
-                    // ID do convite prevalece sobre qualquer e-mail repetido no Firebase.
-                    if (invitedCompanyId.isNotBlank() && company.id != invitedCompanyId) {
-                        firebaseStatus = "O convite aponta para outra empresa. Peça um link atualizado à empresa."
-                        return
-                    }
+                    // O código do convite é a referência principal. Um empresaId antigo
+                    // nunca deve direcionar o cliente ao catálogo/Pix de outra empresa.
                     companyId = company.id
                     companyName = company.getString("name") ?: "Empresa"
                     val companyPrefs = prefs.edit()
@@ -1812,17 +1809,26 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             // ainda não ter sessão; autenticar anonimamente antes da consulta evita
             // que a validação falhe silenciosamente e deixe companyId vazio no cadastro.
             fun findInvitedCompany() {
-                if (invitedCompanyId.isNotBlank()) {
-                    companies.document(invitedCompanyId).get()
-                        .addOnSuccessListener { applyResolvedCompany(it) }
-                        .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
-                } else {
-                    companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get()
+                // O código identifica a empresa correta, mesmo se o empresaId do link for antigo.
+                if (invitedCompanyCode.isNotBlank()) {
+                    companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(5).get()
                         .addOnSuccessListener { snapshot ->
-                            val matches = snapshot.documents.filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
+                            val matches = snapshot.documents.filter {
+                                normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode)
+                            }
                             applyResolvedCompany(matches.singleOrNull())
                         }
-                        .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+                        .addOnFailureListener { e ->
+                            firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}"
+                        }
+                } else if (invitedCompanyId.isNotBlank()) {
+                    companies.document(invitedCompanyId).get()
+                        .addOnSuccessListener { applyResolvedCompany(it) }
+                        .addOnFailureListener { e ->
+                            firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}"
+                        }
+                } else {
+                    firebaseStatus = "O convite não informa o código da empresa. Peça um link atualizado."
                 }
             }
             val auth = FirebaseAuth.getInstance()
@@ -2703,15 +2709,16 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val parts = listOf(result.optString("logradouro"), result.optString("bairro"), listOf(result.optString("localidade"), result.optString("uf")).filter { it.isNotBlank() }.joinToString(" - "))
                                     .filter { it.isNotBlank() && it != "null" }
                                 clientAddress = parts.joinToString(", ")
-                                message = if (clientAddress.isBlank()) "CEP localizado. Preencha o endereço manualmente." else "Endereço localizado."
+                                // Não mostrar mensagem de sucesso depois de localizar o CEP.
+                                message = ""
                             }
                         }
                     }
                     if (cepSearching) Text("Pesquisando CEP…", color = LightBlue, fontSize = 12.sp)
                     if (clientAddress.isNotBlank()) {
-                        Text("Endereço encontrado pelo CEP", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
+                    InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
                     MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
@@ -2721,10 +2728,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             clientPhone.filter { it.isDigit() }.isBlank() -> message = "Informe seu telefone."
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
-                            companyId.isBlank() &&
-                                prefs.getString("invite_company_id", "").orEmpty().isBlank() &&
-                                prefs.getString("pending_company_id", "").orEmpty().isBlank() ->
-                                message = "Este aplicativo ainda não está vinculado a uma empresa. Abra o link de convite enviado pela empresa e tente novamente."
+                            companyId.isBlank() ->
+                                message = "Aguarde a confirmação da empresa do convite. Se não carregar, abra novamente o link enviado pela empresa."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
@@ -2733,10 +2738,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 val customerRef = firestore.collection("customers").document()
                                 fun saveRegistration(uid: String) {
                                     val savedAddress = clientAddress.trim()
-                                    val resolvedCompanyId = companyId.ifBlank {
-                                        prefs.getString("invite_company_id", "").orEmpty()
-                                            .ifBlank { prefs.getString("pending_company_id", "").orEmpty() }
-                                    }
+                                    // Não salvar cadastro sob um ID não confirmado: isso evita
+                                    // vincular o cliente a uma empresa antiga ou sem catálogo/Pix.
+                                    val resolvedCompanyId = companyId
                                     val resolvedCompanyCode = normalizeCompanyCode(invitedCompanyCode.ifBlank { prefs.getString("invite_company_code", "").orEmpty() }.ifBlank { prefs.getString("company_code", "").orEmpty() })
                                     if (resolvedCompanyId.isBlank()) {
                                         customerAccessLoading = false
