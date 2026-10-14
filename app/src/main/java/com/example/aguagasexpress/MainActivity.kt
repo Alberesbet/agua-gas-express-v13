@@ -2020,7 +2020,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     val firestore = remember { FirebaseFirestore.getInstance() }
     val canSeeAllOrders = !prefs.getString("admin_password_hash", null).isNullOrBlank() || page == Page.DELIVERY || (page == Page.TRACKING && trackingReturnPage == Page.DELIVERY)
 
-    DisposableEffect(firestore, canSeeAllOrders) {
+    DisposableEffect(firestore, canSeeAllOrders, companyId) {
         var ordersRegistration: ListenerRegistration? = null
         var configRegistration: ListenerRegistration? = null
         var customerRegistration: ListenerRegistration? = null
@@ -2433,7 +2433,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
     Column(
         modifier = Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(PanelRed, Color(0xFF5F1515), Color(0xFF071020))))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0B1730), Color(0xFF123F70), Color(0xFF071020))))
             .windowInsetsPadding(WindowInsets.navigationBars)
             .imePadding()
             .verticalScroll(rememberScrollState())
