@@ -28,11 +28,11 @@ jobs:
           ls -lh APKs-atuais
       - name: Montar ZIP completo
         run: |
-          mkdir -p entrega
-          cp -a . entrega/Agua-Gas-Express
-          rm -rf entrega/Agua-Gas-Express/.git
-          cd entrega
-          zip -qr ../Agua-Gas-Express-Projeto-Completo-com-APKs-Atuais.zip Agua-Gas-Express
+          mkdir -p /tmp/entrega
+          cp -a . /tmp/entrega/Agua-Gas-Express
+          rm -rf /tmp/entrega/Agua-Gas-Express/.git
+          cd /tmp/entrega
+          zip -qr "$GITHUB_WORKSPACE/Agua-Gas-Express-Projeto-Completo-com-APKs-Atuais.zip" Agua-Gas-Express
       - name: Disponibilizar ZIP para baixar
         uses: actions/upload-artifact@v4
         with:
