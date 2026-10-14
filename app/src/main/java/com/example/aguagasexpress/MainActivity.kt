@@ -3076,6 +3076,23 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { showResetSalesConfirm = true }) { Text("Zerar testes", color = Orange) }
                 }
+                MainButton("🔗 ENVIAR LINK DO CLIENTE") {
+                    val code = normalizeCompanyCode(prefs.getString("company_code", "").orEmpty())
+                    if (companyId.isBlank() || code.isBlank()) {
+                        message = "Não foi possível identificar esta empresa. Saia e entre novamente na conta da empresa."
+                    } else {
+                        val link = makeInviteLink("cliente", code, companyId)
+                        val shareText = "🛒 Água & Gás Express — Faça seu cadastro como cliente desta empresa.\\n\\n$link\\n\\nAbra este link para acessar o catálogo atualizado, consultar os preços e fazer pedidos diretamente para nossa empresa."
+                        try {
+                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }, "Enviar link do cliente"))
+                        } catch (e: Exception) {
+                            message = "Não foi possível abrir o compartilhamento: ${e.localizedMessage ?: "tente novamente"}"
+                        }
+                    }
+                }
                 if (showShareLinksDialog) {
                     AlertDialog(
                         onDismissRequest = { showShareLinksDialog = false },
