@@ -1011,12 +1011,12 @@ private fun shareLatestApk(
         makeInviteLink("cliente", normalizedCode, companyId)
     } else ""
     val shareText = if (inviteUrl.isNotBlank()) {
-        "Água & Gás Express — Aplicativo do Cliente\\n\\n" +
-            "1) Baixe e instale o aplicativo do Cliente:\\n$apkUrl\\n\\n" +
-            "2) Depois de instalar, abra este link para vincular o aplicativo à empresa $normalizedCode e carregar os produtos, preços e Pix corretos:\\n$inviteUrl\\n\\n" +
+        "Água & Gás Express — Aplicativo do Cliente\n\n" +
+            "1) Baixe e instale o aplicativo do Cliente:\n$apkUrl\n\n" +
+            "2) Depois de instalar, abra este link para vincular o aplicativo à empresa $normalizedCode e carregar os produtos, preços e Pix corretos:\n$inviteUrl\n\n" +
             "Importante: abra o link de vínculo depois da instalação. Ele identifica a empresa certa para os pedidos."
     } else {
-        "Água & Gás Express — APK do $label\\n\\nBaixe e instale a versão mais recente por este link:\\n$apkUrl"
+        "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
     }
     try {
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
