@@ -1186,10 +1186,13 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
-        val direct = makeInviteLink("empresa", normalized, masterCompanyId)
-        // Gere os convites usando a empresa atualmente selecionada, sem caracteres antes de https://.
-        val clientLink = makeInviteLink("cliente", normalized, masterCompanyId)
-        val deliveryLink = makeInviteLink("entregador", normalized, masterCompanyId)
+        // Limpa qualquer caractere acidental antes do esquema HTTPS (inclusive um "n" solto).
+        fun cleanInviteLink(profile: String): String = makeInviteLink(profile, normalized, masterCompanyId)
+            .trim()
+            .removePrefix("nhttps://").let { value -> if (value.startsWith("https://")) value else "https://"+value.substringAfter("://", value) }
+        val direct = cleanInviteLink("empresa")
+        val clientLink = cleanInviteLink("cliente")
+        val deliveryLink = cleanInviteLink("entregador")
         val text = "🏪 Água & Gás Express — LINK DA EMPRESA\n\n$direct\n\n👤 LINK DE CADASTRO DO CLIENTE\n$clientLink\n\n🛵 LINK DE CADASTRO DO ENTREGADOR\n$deliveryLink\n\nEnvie o link da empresa para o responsável acessar o painel. A empresa pode compartilhar os links individuais de cliente e entregador com sua equipe.\nE-mail autorizado: $emailForMessage"
         try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
