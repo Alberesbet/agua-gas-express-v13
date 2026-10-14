@@ -708,6 +708,36 @@ private fun defaultProducts(gasPrice: Double = 95.0, comboWaterPrice: Double = 5
     Product("Gás", gasPrice, true)
 )
 
+private fun pixTlv(id: String, value: String): String = id + value.length.toString().padStart(2, '0') + value
+
+private fun buildPixCopyPaste(key: String, recipient: String, city: String, amount: Double): String {
+    fun safe(value: String, max: Int): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\p{M}+"), "")
+        .uppercase(Locale.ROOT)
+        .replace(Regex("[^A-Z0-9 ]"), "")
+        .trim().take(max).ifBlank { "NAO INFORMADO" }
+    val merchant = safe(recipient, 25)
+    val merchantCity = safe(city, 15)
+    val account = pixTlv("00", "BR.GOV.BCB.PIX") + pixTlv("01", key.trim())
+    val additional = pixTlv("05", "***")
+    var payload = pixTlv("00", "01") +
+        pixTlv("26", account) +
+        pixTlv("52", "0000") +
+        pixTlv("53", "986") +
+        pixTlv("54", String.format(Locale.US, "%.2f", amount)) +
+        pixTlv("58", "BR") +
+        pixTlv("59", merchant) +
+        pixTlv("60", merchantCity) +
+        pixTlv("62", additional) +
+        "6304"
+    var crc = 0xFFFF
+    payload.toByteArray(Charsets.UTF_8).forEach { byte ->
+        crc = crc xor ((byte.toInt() and 0xFF) shl 8)
+        repeat(8) { crc = if ((crc and 0x8000) != 0) (crc shl 1) xor 0x1021 else crc shl 1; crc = crc and 0xFFFF }
+    }
+    return payload + crc.toString(16).uppercase(Locale.ROOT).padStart(4, '0')
+}
+
 private fun loadProducts(prefs: android.content.SharedPreferences): List<Product> {
     val saved = prefs.getString("products_json", null) ?: return defaultProducts()
     return try {
@@ -2825,11 +2855,21 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                     fontSize = 17.sp
                                 )
                                 if (pixKey.isNotBlank()) {
-                                    MainButton("COPIAR CHAVE PIX") {
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Chave Pix", pixKey))
-                                        pixCopied = true
-                                        message = "Chave Pix copiada."
+                                    MainButton("COPIAR PIX COM VALOR") {
+                                        if (clientTotal <= 0.0 || pixRecipientName.isBlank()) {
+                                            message = "Confira o total do pedido e o nome do recebedor cadastrado pela empresa."
+                                        } else {
+                                            val payload = buildPixCopyPaste(
+                                                pixKey,
+                                                pixRecipientName,
+                                                prefs.getString("company_city", "")?.ifBlank { "BRASILIA" } ?: "BRASILIA",
+                                                clientTotal
+                                            )
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Pix com valor", payload))
+                                            pixCopied = true
+                                            message = "Pix copia e cola com o valor de \${money(clientTotal)} copiado."
+                                        }
                                     }
                                 }
                             }
