@@ -44,7 +44,7 @@ a.secondary{background:#1688e8}.small{font-size:12px;color:#bfe6ff;line-height:1
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, getDocs, getDoc, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBYqd8kTRq_cV5suBSWK-qTjldaOJm7h-8',
@@ -60,7 +60,6 @@ const db = getFirestore(app);
 const params = new URLSearchParams(location.search);
 const perfil = (params.get('perfil') || '').toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
-const empresaId = (params.get('empresaId') || '').trim();
 const empresaId = (params.get('empresaId') || '').replace(/[^A-Za-z0-9_-]/g,'').slice(0,128);
 const title = document.getElementById('title');
 const msg = document.getElementById('msg');
@@ -72,7 +71,7 @@ const releasePage = 'https://github.com/Alberesbet/agua-gas-express-v13/releases
 const downloadUrls = {
   empresa: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Empresa.apk',
   cliente: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Cliente.apk',
-  entregador: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Entregador.apk',
+  entregador: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Entregador.apk',
   proprietario: 'https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/AguaGasExpress-Desenvolvedor.apk'
 };
 const apk = downloadUrls[perfil] || '';
