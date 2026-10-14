@@ -988,6 +988,31 @@ private suspend fun lookupCep(cep: String): JSONObject? = withContext(Dispatcher
     } catch (_: Exception) { null }
 }
 
+private fun shareLatestApk(context: Context, role: String) {
+    val normalizedRole = role.lowercase(Locale.ROOT)
+    val label = when (normalizedRole) {
+        "cliente" -> "Cliente"
+        "entregador" -> "Entregador"
+        else -> "Empresa"
+    }
+    val fileName = when (normalizedRole) {
+        "cliente" -> "AguaGasExpress-Cliente.apk"
+        "entregador" -> "AguaGasExpress-Entregador.apk"
+        else -> "AguaGasExpress-Empresa.apk"
+    }
+    val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
+    val shareText = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
+    try {
+        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }, "Enviar APK do $label"))
+    } catch (_: Exception) {
+        android.widget.Toast.makeText(context, "Não foi possível compartilhar o APK do $label.", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
 @Composable
 private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     val context = LocalContext.current
@@ -1181,37 +1206,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             masterCompanyMessage = "Teste prorrogado por mais $extra dias."
             loading = false
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível acrescentar dias: ${e.localizedMessage ?: "erro no Firebase"}" }
-    }
-
-    fun shareLatestApk(role: String) {
-        val normalizedRole = role.lowercase(Locale.ROOT)
-        val label = when (normalizedRole) {
-            "cliente" -> "Cliente"
-            "entregador" -> "Entregador"
-            else -> "Empresa"
-        }
-        val fileName = when (normalizedRole) {
-            "cliente" -> "AguaGasExpress-Cliente.apk"
-            "entregador" -> "AguaGasExpress-Entregador.apk"
-            else -> "AguaGasExpress-Empresa.apk"
-        }
-        val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
-        val shareText = "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
-        try {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
-                putExtra(Intent.EXTRA_TEXT, shareText)
-            }, "Enviar APK do $label"))
-            masterStatus = "Link para baixar o APK do $label preparado para envio."
-            masterCompanyMessage = "Link para baixar o APK do $label preparado para envio."
-            message = "Link para baixar o APK do $label preparado para envio."
-        } catch (e: Exception) {
-            val errorText = "Não foi possível compartilhar o APK do $label: ${e.localizedMessage ?: "tente novamente"}"
-            masterStatus = errorText
-            masterCompanyMessage = errorText
-            message = errorText
-        }
     }
 
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
@@ -1410,7 +1404,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { shareLatestApk("empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
+                Button(onClick = { shareLatestApk(context, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { masterCompanyDetailsOpen = false; masterCompanyMessage = "" }) { Text("VOLTAR", color = Color.White) }
             } else {
@@ -3137,8 +3131,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
                 // Compartilha os APKs publicados da versão mais recente, sem links de cadastro.
-                MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk("cliente") }
-                MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk("entregador") }
+                MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk(context, "cliente") }
+                MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk(context, "entregador") }
                 MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
                 if (showCustomersDeleteDialog) {
                     AlertDialog(
