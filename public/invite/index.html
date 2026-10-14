@@ -60,6 +60,7 @@ const db = getFirestore(app);
 const params = new URLSearchParams(location.search);
 const perfil = (params.get('perfil') || '').toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+const empresaId = (params.get('empresaId') || '').trim();
 const title = document.getElementById('title');
 const msg = document.getElementById('msg');
 const actions = document.getElementById('actions');
@@ -100,14 +101,14 @@ if(perfil==='empresa'){
   }else{
     msg.textContent='Convite da empresa '+empresa+'. Primeiro, baixe e instale o aplicativo do Cliente. Depois, toque em “JÁ INSTALEI — ABRIR APLICATIVO” para abrir o cadastro no aplicativo. Após concluir o cadastro, você poderá fazer seus pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa),true);
+    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):''),true);
     info.textContent='Passo 1: baixe e instale o aplicativo. Passo 2: volte a esta página e toque em “JÁ INSTALEI — ABRIR APLICATIVO”. O cadastro e os pedidos serão feitos dentro do aplicativo.';
   }
 }else if(perfil==='entregador'){
   title.textContent='Acesso do Entregador';
   msg.textContent='Convite da empresa '+(empresa||'não informada')+'. Baixe o aplicativo do Entregador e abra-o para continuar.';
   addButton('BAIXAR APK DO ENTREGADOR',apk);
-  addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=entregador&empresa='+encodeURIComponent(empresa),true);
+  addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=entregador&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):''),true);
   addButton('Se o download não começar, abrir a página de downloads',releasePage,true);
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
@@ -152,6 +153,9 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     if(!companyDoc || companyDoc.data()?.active === false){
       throw new Error('Empresa não encontrada ou desativada. Peça à empresa um novo convite.');
     }
+    if(companyDoc.data()?.companyCode && String(companyDoc.data().companyCode).toUpperCase().replace(/[^A-Z0-9]/g,'') !== empresa){
+      throw new Error('O código e o ID da empresa no convite não correspondem. Peça um link novo.');
+    }
     const companyId = companyDoc.id;
     const id=await customerDocId(phone);
     await setDoc(doc(db,'customers',id),{
@@ -163,7 +167,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
     showStatus('Cadastro enviado com sucesso para a empresa '+empresa+'. Agora instale o aplicativo do Cliente para entrar e fazer seus pedidos. Toque em “BAIXAR APLICATIVO DO CLIENTE” e, depois da instalação, volte aqui e toque em “JÁ INSTALEI — ABRIR APLICATIVO”.');
     msg.textContent='Cadastro concluído — falta abrir o aplicativo para fazer pedidos.';
     addButton('BAIXAR APLICATIVO DO CLIENTE',apk);
-    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+'&clienteId='+encodeURIComponent(id),true);
+    addButton('JÁ INSTALEI — ABRIR APLICATIVO','aguagasexpress://invite?perfil=cliente&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):'')+'&clienteId='+encodeURIComponent(id),true);
   }catch(error){
     console.error(error);
     const errorCode = error?.code || 'erro-desconhecido';
