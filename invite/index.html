@@ -54,9 +54,20 @@ const firebaseConfig = {
   messagingSenderId: '1071136912572',
   // appId web omitted: this page uses Firebase Auth and Firestore only.
 };
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+let auth = null;
+let db = null;
+let firebaseInitError = null;
+function ensureFirebase(){
+  if(auth && db) return;
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch(error) {
+    firebaseInitError = error;
+    throw error;
+  }
+}
 const params = new URLSearchParams(location.search);
 const perfil = (params.get('perfil') || '').toLowerCase();
 const empresa = (params.get('empresa') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
@@ -168,6 +179,7 @@ document.getElementById('customerForm').addEventListener('submit',async(event)=>
   if(documentNumber && ((docType==='CPF'&&documentNumber.length!==11)||(docType==='CNPJ'&&documentNumber.length!==14)||!docType)){showStatus('Confira o tipo e o número do CPF/CNPJ, ou deixe o documento em branco.');return;}
   button.disabled=true;button.textContent='ENVIANDO CADASTRO…';
   try{
+    ensureFirebase();
     const credential=await signInAnonymously(auth);
     const uid=credential.user.uid;
     const address=street+', '+number;
