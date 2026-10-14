@@ -1186,14 +1186,19 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
-        // Limpa qualquer caractere acidental antes do esquema HTTPS (inclusive um "n" solto).
-        fun cleanInviteLink(profile: String): String = makeInviteLink(profile, normalized, masterCompanyId)
-            .trim()
-            .removePrefix("nhttps://").let { value -> if (value.startsWith("https://")) value else "https://"+value.substringAfter("://", value) }
+        // Reconstrói cada link a partir do primeiro https://; assim qualquer prefixo
+        // acidental (inclusive "n", barra invertida ou espaços) nunca vai para o compartilhamento.
+        fun cleanInviteLink(profile: String): String {
+            val raw = makeInviteLink(profile, normalized, masterCompanyId).trim()
+            val schemeStart = raw.indexOf("https://", ignoreCase = true)
+            return if (schemeStart >= 0) raw.substring(schemeStart).trim()
+            else WEB_INVITE_BASE_URL + raw.removePrefix("n").removePrefix("N").trimStart('/')
+        }
         val direct = cleanInviteLink("empresa")
         val clientLink = cleanInviteLink("cliente")
         val deliveryLink = cleanInviteLink("entregador")
-        val text = "🏪 Água & Gás Express — LINK DA EMPRESA\n\n$direct\n\n👤 LINK DE CADASTRO DO CLIENTE\n$clientLink\n\n🛵 LINK DE CADASTRO DO ENTREGADOR\n$deliveryLink\n\nEnvie o link da empresa para o responsável acessar o painel. A empresa pode compartilhar os links individuais de cliente e entregador com sua equipe.\nE-mail autorizado: $emailForMessage"
+        val text = ("🏪 Água & Gás Express — LINK DA EMPRESA\n\n$direct\n\n👤 LINK DE CADASTRO DO CLIENTE\n$clientLink\n\n🛵 LINK DE CADASTRO DO ENTREGADOR\n$deliveryLink\n\nEnvie o link da empresa para o responsável acessar o painel. A empresa pode compartilhar os links individuais de cliente e entregador com sua equipe.\nE-mail autorizado: $emailForMessage")
+            .replace(Regex("(?i)n(?=https://)"), "")
         try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
