@@ -1801,17 +1801,33 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     firebaseStatus = "Convite vinculado à empresa $companyName."
                 }
             }
-            if (invitedCompanyId.isNotBlank()) {
-                companies.document(invitedCompanyId).get()
-                    .addOnSuccessListener { applyResolvedCompany(it) }
-                    .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+            // As regras atuais do Firestore exigem um usuário autenticado até para ler
+            // a empresa do convite. O APK do cliente é uma instalação separada e pode
+            // ainda não ter sessão; autenticar anonimamente antes da consulta evita
+            // que a validação falhe silenciosamente e deixe companyId vazio no cadastro.
+            fun findInvitedCompany() {
+                if (invitedCompanyId.isNotBlank()) {
+                    companies.document(invitedCompanyId).get()
+                        .addOnSuccessListener { applyResolvedCompany(it) }
+                        .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+                } else {
+                    companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get()
+                        .addOnSuccessListener { snapshot ->
+                            val matches = snapshot.documents.filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
+                            applyResolvedCompany(matches.singleOrNull())
+                        }
+                        .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
+                }
+            }
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser != null) {
+                findInvitedCompany()
             } else {
-                companies.whereEqualTo("companyCode", normalizeCompanyCode(invitedCompanyCode)).limit(2).get()
-                    .addOnSuccessListener { snapshot ->
-                        val matches = snapshot.documents.filter { normalizeCompanyCode(it.getString("companyCode").orEmpty()) == normalizeCompanyCode(invitedCompanyCode) }
-                        applyResolvedCompany(matches.singleOrNull())
+                auth.signInAnonymously()
+                    .addOnSuccessListener { findInvitedCompany() }
+                    .addOnFailureListener { e ->
+                        firebaseStatus = "Não foi possível autenticar para validar o convite: ${e.localizedMessage ?: "verifique a conexão"}"
                     }
-                    .addOnFailureListener { e -> firebaseStatus = "Não foi possível validar a empresa do convite: ${e.localizedMessage ?: "erro de conexão"}" }
             }
         }
     }
