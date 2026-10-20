@@ -1177,6 +1177,14 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterCompanyEmail by remember { mutableStateOf("") }
     var masterStatus by remember { mutableStateOf("") }
     var masterCompanyPhone by remember { mutableStateOf("") }
+    var masterCompanyCep by remember { mutableStateOf("") }
+    var masterCompanyNumber by remember { mutableStateOf("") }
+    var masterCompanyStreet by remember { mutableStateOf("") }
+    var masterCompanyNeighborhood by remember { mutableStateOf("") }
+    var masterCompanyCity by remember { mutableStateOf("") }
+    var masterCompanyState by remember { mutableStateOf("") }
+    var masterCompanyDocumentType by remember { mutableStateOf("CPF") }
+    var masterCompanyDocumentNumber by remember { mutableStateOf("") }
     var masterCompanyDetailsOpen by remember { mutableStateOf(false) }
     var masterCompanyId by remember { mutableStateOf("") }
     var masterCompanyDocs by remember { mutableStateOf<List<com.google.firebase.firestore.DocumentSnapshot>>(emptyList()) }
@@ -1519,7 +1527,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Text("👑 PAINEL DO PROPRIETÁRIO", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Cadastre a empresa com nome, e-mail autorizado e telefone. O e-mail continua sendo a autorização para ela abrir a conta.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { masterRegistration = true; mode = "register"; error = ""; masterStatus = ""; masterCompanyEmail = ""; masterCompanyName = ""; masterCompanyPhone = ""; trialDays = "30"; masterPermanent = false }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("🏪 CADASTRAR EMPRESA", fontWeight = FontWeight.ExtraBold) }
+                Button(onClick = { masterRegistration = true; mode = "register"; error = ""; masterStatus = ""; masterCompanyEmail = ""; masterCompanyName = ""; masterCompanyPhone = ""; masterCompanyCep = ""; masterCompanyNumber = ""; masterCompanyStreet = ""; masterCompanyNeighborhood = ""; masterCompanyCity = ""; masterCompanyState = ""; masterCompanyDocumentType = "CPF"; masterCompanyDocumentNumber = ""; trialDays = "30"; masterPermanent = false }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("🏪 CADASTRAR EMPRESA", fontWeight = FontWeight.ExtraBold) }
                 if (masterCompanyCode.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { masterCompanyDetailsOpen = true; masterCompanyEmailDraft = masterCompanyEmail; masterCompanyMessage = "" }) {
@@ -1642,6 +1650,28 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 OutlinedTextField(masterCompanyEmail, { masterCompanyEmail = it }, label = { Text("E-mail autorizado") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(masterCompanyPhone, { masterCompanyPhone = it }, label = { Text("Telefone") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(masterCompanyCep, { masterCompanyCep = it.filter(Char::isDigit).take(8) }, label = { Text("CEP") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(masterCompanyStreet, { masterCompanyStreet = it }, label = { Text("Rua / Avenida") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(masterCompanyNumber, { masterCompanyNumber = it }, label = { Text("Número") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(masterCompanyNeighborhood, { masterCompanyNeighborhood = it }, label = { Text("Bairro") }, singleLine = true, modifier = Modifier.weight(1.5f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(masterCompanyCity, { masterCompanyCity = it }, label = { Text("Cidade") }, singleLine = true, modifier = Modifier.weight(1.4f))
+                    OutlinedTextField(masterCompanyState, { masterCompanyState = it.uppercase().take(2) }, label = { Text("UF") }, singleLine = true, modifier = Modifier.weight(0.6f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("DOCUMENTO DA EMPRESA", color = LightBlue, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("CPF", "CNPJ").forEach { type ->
+                        Button(onClick = { masterCompanyDocumentType = type; masterCompanyDocumentNumber = "" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (masterCompanyDocumentType == type) Green else Color(0xFF315A85))) { Text(type) }
+                    }
+                }
+                OutlinedTextField(masterCompanyDocumentNumber, { masterCompanyDocumentNumber = it.filter(Char::isDigit).take(if (masterCompanyDocumentType == "CPF") 11 else 14) }, label = { Text("Número do $masterCompanyDocumentType") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
                 Text("LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1655,12 +1685,15 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         masterCompanyName.trim().length < 2 -> { error = "Informe o nome da empresa."; return@Button }
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(masterCompanyEmail.trim()).matches() -> { error = "Informe um e-mail válido."; return@Button }
                         masterCompanyPhone.filter(Char::isDigit).length < 8 -> { error = "Informe um telefone válido."; return@Button }
+                        masterCompanyCep.filter(Char::isDigit).length != 8 -> { error = "Informe um CEP válido com 8 dígitos."; return@Button }
+                        masterCompanyStreet.isBlank() || masterCompanyNumber.isBlank() || masterCompanyNeighborhood.isBlank() || masterCompanyCity.isBlank() || masterCompanyState.length != 2 -> { error = "Preencha o endereço completo da empresa."; return@Button }
+                        masterCompanyDocumentNumber.filter(Char::isDigit).length != (if (masterCompanyDocumentType == "CPF") 11 else 14) -> { error = "Informe um número válido para $masterCompanyDocumentType."; return@Button }
                     }
                     ensureFirebase {
                         val code = generateCompanyCode(); val now = System.currentTimeMillis(); val permanent = masterPermanent; val days = trialDays.toIntOrNull() ?: 30; val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L; val id = UUID.randomUUID().toString(); val license = generateCommercialLicenseKey()
                         val uid = auth.currentUser?.uid
                         if (uid.isNullOrBlank()) { loading = false; error = "Firebase Auth ainda não está autenticado. Tente novamente após ativar o login anônimo no Firebase."; return@ensureFirebase }
-                        val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
+                        val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCep" to masterCompanyCep.trim(), "companyStreet" to masterCompanyStreet.trim(), "companyNumber" to masterCompanyNumber.trim(), "companyNeighborhood" to masterCompanyNeighborhood.trim(), "companyCity" to masterCompanyCity.trim(), "companyState" to masterCompanyState.trim(), "companyDocumentType" to masterCompanyDocumentType, "companyDocumentNumber" to masterCompanyDocumentNumber.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
                                 "appVersion" to "12.0-test")
                         firestore.collection("companies").document(id).set(data).addOnSuccessListener {
                             masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
