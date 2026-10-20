@@ -1897,6 +1897,42 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
         }
     }
+    LaunchedEffect(clientCompanyCode) {
+        val code = normalizeCompanyCode(clientCompanyCode)
+        if (code.length >= 4 && companyId.isBlank()) {
+            fun resolveCompanyCode() {
+                FirebaseFirestore.getInstance().collection("companies")
+                    .whereEqualTo("companyCode", code).limit(5).get()
+                    .addOnSuccessListener { snapshot ->
+                        val match = snapshot.documents.singleOrNull {
+                            normalizeCompanyCode(it.getString("companyCode").orEmpty()) == code &&
+                                it.getBoolean("active") != false
+                        }
+                        if (match != null) {
+                            companyId = match.id
+                            companyName = match.getString("name") ?: "Empresa"
+                            prefs.edit()
+                                .putString("company_id", match.id)
+                                .putString("company_name", companyName)
+                                .putString("client_company_id", match.id)
+                                .putString("client_company_name", companyName)
+                                .putString("client_company_code", code)
+                                .apply()
+                            message = ""
+                        } else {
+                            message = "Código da empresa não localizado. Confira o código enviado junto com o APK."
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        message = "Não foi possível consultar a empresa. Verifique a internet e tente novamente."
+                    }
+            }
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser != null) resolveCompanyCode()
+            else auth.signInAnonymously().addOnSuccessListener { resolveCompanyCode() }
+                .addOnFailureListener { message = "Não foi possível conectar para validar a empresa. Verifique a internet." }
+        }
+    }
     val selectedOrders = remember { mutableStateListOf<Long>() }
     var customer by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -2008,6 +2044,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientPhone by remember { mutableStateOf(prefs.getString("client_phone", "") ?: "") }
     var clientDocType by remember { mutableStateOf(prefs.getString("client_doc_type", "CPF") ?: "CPF") }
     var clientDocNumber by remember { mutableStateOf(prefs.getString("client_doc_number", "") ?: "") }
+    var clientCompanyCode by remember { mutableStateOf(prefs.getString("invite_company_code", "").orEmpty().ifBlank { prefs.getString("client_company_code", "").orEmpty() }) }
     var clientDocTypeMenuExpanded by remember { mutableStateOf(false) }
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
@@ -2742,6 +2779,17 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     Spacer(Modifier.height(12.dp))
                     InputField("Nome completo", clientName) { clientName = it }
                     InputField("Telefone", clientPhone) { clientPhone = it }
+                    InputField("Código da empresa (enviado junto com o APK)", clientCompanyCode) {
+                        clientCompanyCode = normalizeCompanyCode(it).take(20)
+                        message = ""
+                    }
+                    Text(
+                        if (companyId.isNotBlank()) "Empresa identificada: $companyName" else "Digite o código recebido junto com o APK para vincular seu cadastro à empresa correta.",
+                        color = if (companyId.isNotBlank()) Color(0xFF8BE9A5) else LightBlue,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
                     Text("Documento para nota (opcional)", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { clientDocType = "CPF"; clientDocTypeMenuExpanded = false }, colors = ButtonDefaults.buttonColors(containerColor = if (clientDocType == "CPF") Blue else Color(0xFF28415F)), modifier = Modifier.weight(1f)) { Text("CPF") }
@@ -2782,7 +2830,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             !isValidOptionalDocument(clientDocType, clientDocNumber) -> message = "Informe um ${clientDocType} válido ou deixe o campo em branco."
                             clientAddress.isBlank() -> message = "Informe um CEP válido para localizar o endereço."
                             companyId.isBlank() ->
-                                message = "Aguarde a confirmação da empresa do convite. Se não carregar, abra novamente o link enviado pela empresa."
+                                message = "Informe o código da empresa enviado junto com o APK e aguarde a identificação da empresa."
                             else -> {
                                 customerAccessLoading = true
                                 val digits = clientPhone.filter { it.isDigit() }
