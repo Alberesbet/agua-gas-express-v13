@@ -2663,9 +2663,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 if (!clientProfileSaved && customerAccessMode == "choice") {
                     Text("Para começar, faça seu cadastro.", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(14.dp))
-                    MainButton("CADASTRAR") { message = ""; customerAccessMode = "register" }
+                    MainButton("FINALIZAR CADASTRO") { message = ""; customerAccessMode = "register" }
                     ErrorText(message)
-                    BackButton { page = Page.HOME }
                 } else if (!clientProfileSaved && customerAccessMode == "login") {
                     Text("Informe o telefone usado no cadastro. Não precisa de senha.", color = Color.White, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(12.dp))
@@ -2775,7 +2774,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     if (!message.startsWith("Aguarde a confirmação da empresa do convite") && !message.startsWith("Aguarde a confirmação da empresa e tente novamente.")) ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
+                    MainButton(if (customerAccessLoading) "SALVANDO..." else "FINALIZAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2854,8 +2853,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text("Telefone: $clientPhone", color = Color.White, textAlign = TextAlign.Center, fontSize = 12.sp, lineHeight = 14.sp)
@@ -3199,8 +3196,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                MainButton("VOLTAR AO INÍCIO") { message = ""; page = Page.HOME }
+                if (clientProfileSaved) {
+                    Spacer(Modifier.height(10.dp))
+                    MainButton("VOLTAR AO INÍCIO") { message = ""; page = Page.HOME }
+                }
             }
 
             Page.ADMIN -> {
