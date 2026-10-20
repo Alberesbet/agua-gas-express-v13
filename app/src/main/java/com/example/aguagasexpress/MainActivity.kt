@@ -1750,8 +1750,8 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
 @Composable
 private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     val context = LocalContext.current
-    var companyId by remember { mutableStateOf(prefs.getString("company_id", "") ?: "") }
-    var companyName by remember { mutableStateOf(prefs.getString("company_name", "Empresa") ?: "Empresa") }
+    var companyId by remember { mutableStateOf(prefs.getString("company_id", "").orEmpty().ifBlank { prefs.getString("client_company_id", "").orEmpty() }) }
+    var companyName by remember { mutableStateOf(prefs.getString("company_name", "").orEmpty().ifBlank { prefs.getString("client_company_name", "Empresa") ?: "Empresa" }) }
     val invitedCompanyCode = prefs.getString("invite_company_code", "").orEmpty()
     val justRegistered = prefs.getBoolean("company_just_registered", false)
     var page by remember { mutableStateOf(
@@ -2772,7 +2772,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
-                    if (!message.startsWith("Aguarde a confirmação da empresa do convite") && !message.startsWith("Aguarde a confirmação da empresa e tente novamente.")) ErrorText(message)
+                    ErrorText(message)
                     Spacer(Modifier.height(10.dp))
                     MainButton(if (customerAccessLoading) "SALVANDO..." else "FINALIZAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
