@@ -1897,42 +1897,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             }
         }
     }
-    LaunchedEffect(clientCompanyCode) {
-        val code = normalizeCompanyCode(clientCompanyCode)
-        if (code.length >= 4 && companyId.isBlank()) {
-            fun resolveCompanyCode() {
-                FirebaseFirestore.getInstance().collection("companies")
-                    .whereEqualTo("companyCode", code).limit(5).get()
-                    .addOnSuccessListener { snapshot ->
-                        val match = snapshot.documents.singleOrNull {
-                            normalizeCompanyCode(it.getString("companyCode").orEmpty()) == code &&
-                                it.getBoolean("active") != false
-                        }
-                        if (match != null) {
-                            companyId = match.id
-                            companyName = match.getString("name") ?: "Empresa"
-                            prefs.edit()
-                                .putString("company_id", match.id)
-                                .putString("company_name", companyName)
-                                .putString("client_company_id", match.id)
-                                .putString("client_company_name", companyName)
-                                .putString("client_company_code", code)
-                                .apply()
-                            message = ""
-                        } else {
-                            message = "Código da empresa não localizado. Confira o código enviado junto com o APK."
-                        }
-                    }
-                    .addOnFailureListener { e ->
-                        message = "Não foi possível consultar a empresa. Verifique a internet e tente novamente."
-                    }
-            }
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser != null) resolveCompanyCode()
-            else auth.signInAnonymously().addOnSuccessListener { resolveCompanyCode() }
-                .addOnFailureListener { message = "Não foi possível conectar para validar a empresa. Verifique a internet." }
-        }
-    }
     val selectedOrders = remember { mutableStateListOf<Long>() }
     var customer by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -2045,6 +2009,42 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var clientDocType by remember { mutableStateOf(prefs.getString("client_doc_type", "CPF") ?: "CPF") }
     var clientDocNumber by remember { mutableStateOf(prefs.getString("client_doc_number", "") ?: "") }
     var clientCompanyCode by remember { mutableStateOf(prefs.getString("invite_company_code", "").orEmpty().ifBlank { prefs.getString("client_company_code", "").orEmpty() }) }
+    LaunchedEffect(clientCompanyCode) {
+        val code = normalizeCompanyCode(clientCompanyCode)
+        if (code.length >= 4 && companyId.isBlank()) {
+            fun resolveCompanyCode() {
+                FirebaseFirestore.getInstance().collection("companies")
+                    .whereEqualTo("companyCode", code).limit(5).get()
+                    .addOnSuccessListener { snapshot ->
+                        val match = snapshot.documents.singleOrNull {
+                            normalizeCompanyCode(it.getString("companyCode").orEmpty()) == code &&
+                                it.getBoolean("active") != false
+                        }
+                        if (match != null) {
+                            companyId = match.id
+                            companyName = match.getString("name") ?: "Empresa"
+                            prefs.edit()
+                                .putString("company_id", match.id)
+                                .putString("company_name", companyName)
+                                .putString("client_company_id", match.id)
+                                .putString("client_company_name", companyName)
+                                .putString("client_company_code", code)
+                                .apply()
+                            message = ""
+                        } else {
+                            message = "Código da empresa não localizado. Confira o código enviado junto com o APK."
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        message = "Não foi possível consultar a empresa. Verifique a internet e tente novamente."
+                    }
+            }
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser != null) resolveCompanyCode()
+            else auth.signInAnonymously().addOnSuccessListener { resolveCompanyCode() }
+                .addOnFailureListener { message = "Não foi possível conectar para validar a empresa. Verifique a internet." }
+        }
+    }
     var clientDocTypeMenuExpanded by remember { mutableStateOf(false) }
     var clientCep by remember { mutableStateOf(prefs.getString("client_cep", "") ?: "") }
     var clientAddress by remember { mutableStateOf(prefs.getString("client_street_address", prefs.getString("client_address", "")) ?: "") }
