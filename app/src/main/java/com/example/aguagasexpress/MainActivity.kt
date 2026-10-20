@@ -2773,9 +2773,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         Text(clientAddress, color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                     }
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
-                    ErrorText(message)
+                    if (!message.startsWith("Aguarde a confirmação da empresa do convite") && !message.startsWith("Aguarde a confirmação da empresa e tente novamente.")) ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "SALVANDO..." else "FINALIZAR CADASTRO") {
+                    MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
@@ -2856,7 +2856,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                     Spacer(Modifier.height(8.dp))
                     MainButton("VOLTAR") { message = ""; customerAccessMode = "choice" }
-                    ErrorText(message)
                 } else {
                     Text("Olá, $clientName!", color = LightBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text("Telefone: $clientPhone", color = Color.White, textAlign = TextAlign.Center, fontSize = 12.sp, lineHeight = 14.sp)
