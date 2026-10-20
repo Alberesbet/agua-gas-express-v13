@@ -2775,7 +2775,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     InputField("Número da casa", clientHouseNumber) { clientHouseNumber = it }
                     ErrorText(message)
                     Spacer(Modifier.height(10.dp))
-                    MainButton(if (customerAccessLoading) "SALVANDO..." else "CADASTRAR") {
+                    MainButton(if (customerAccessLoading) "SALVANDO..." else "FINALIZAR CADASTRO") {
                         if (customerAccessLoading) return@MainButton
                         when {
                             clientName.isBlank() -> message = "Informe seu nome."
