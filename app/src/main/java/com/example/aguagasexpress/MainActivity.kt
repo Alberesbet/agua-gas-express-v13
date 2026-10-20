@@ -575,6 +575,9 @@ private fun createOrderReceiptPdf(context: Context, order: Order, companyName: S
         val city = cp.getString("company_city", "") ?: ""
         val state = cp.getString("company_state", "") ?: ""
         val code = cp.getString("company_code", "") ?: ""
+        val companyDocumentType = cp.getString("company_document_type", "") ?: ""
+        val companyDocumentNumber = cp.getString("company_document_number", "") ?: ""
+        if (companyDocumentNumber.isNotBlank()) wrapped("${companyDocumentType.ifBlank { "CPF/CNPJ" }}: ${formatDocument(companyDocumentType, companyDocumentNumber)}")
         if (responsible.isNotBlank()) wrapped("Responsável: $responsible")
         if (phone.isNotBlank()) wrapped("Telefone: $phone")
         if (email.isNotBlank()) wrapped("E-mail: $email")
@@ -635,10 +638,26 @@ private fun createOrderReceiptPdf(context: Context, order: Order, companyName: S
 }
 
 
+private fun openOrderReceipt(context: Context, order: Order, companyName: String) {
+    val uri = createOrderReceiptPdf(context, order, companyName)
+    if (uri == null) {
+        android.widget.Toast.makeText(context, "Não foi possível gerar o recibo PDF neste aparelho.", android.widget.Toast.LENGTH_LONG).show()
+        return
+    }
+    try {
+        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }, "Visualizar recibo"))
+    } catch (_: Exception) {
+        android.widget.Toast.makeText(context, "Não há um aplicativo para abrir PDF. Use Compartilhar recibo.", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
 private fun shareOrderReceipt(context: Context, order: Order, companyName: String) {
     val uri = createOrderReceiptPdf(context, order, companyName)
     if (uri == null) {
-        android.widget.Toast.makeText(context, "O PDF exige Android 10 ou superior nesta versão.", android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(context, "O PDF não pôde ser gerado neste aparelho.", android.widget.Toast.LENGTH_LONG).show()
         return
     }
     try {
@@ -2954,8 +2973,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                             Text("Itens: ${lastClientOrder.items}", color = Ink, fontSize = 13.sp)
                                             Text("Total: ${money(lastClientOrder.total)}", color = Ink, fontWeight = FontWeight.Bold)
                                             Spacer(Modifier.height(7.dp))
-                                            Button(onClick = { shareOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
-                                                Text("📄 GERAR PDF E COMPARTILHAR")
+                                            Button(onClick = { openOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("👁️ VISUALIZAR RECIBO")
+                                            }
+                                            Spacer(Modifier.height(6.dp))
+                                            OutlinedButton(onClick = { shareOrderReceipt(context, lastClientOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("📤 COMPARTILHAR RECIBO")
                                             }
                                         }
                                     }
