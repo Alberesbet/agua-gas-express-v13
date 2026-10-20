@@ -1032,21 +1032,32 @@ private fun shareLatestApk(
             val targetDir = java.io.File(context.filesDir, "downloaded-apks")
             if (!targetDir.exists()) targetDir.mkdirs()
             val apkFile = java.io.File(targetDir, fileName)
+            val tempFile = java.io.File(targetDir, "$fileName.part")
             connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 20000
                 readTimeout = 30000
                 instanceFollowRedirects = true
                 requestMethod = "GET"
+                setRequestProperty("Cache-Control", "no-cache")
             }
             connection.connect()
             if (connection.responseCode !in 200..299) {
                 throw IllegalStateException("Download HTTP ${connection.responseCode}")
             }
             connection.inputStream.use { input ->
-                apkFile.outputStream().use { output -> input.copyTo(output) }
+                tempFile.outputStream().use { output -> input.copyTo(output) }
             }
-            if (!apkFile.isFile || apkFile.length() <= 0L) {
+            if (!tempFile.isFile || tempFile.length() <= 0L) {
+                tempFile.delete()
                 throw IllegalStateException("APK vazio")
+            }
+            if (apkFile.exists() && !apkFile.delete()) {
+                tempFile.delete()
+                throw IllegalStateException("Não foi possível substituir o APK anterior")
+            }
+            if (!tempFile.renameTo(apkFile)) {
+                tempFile.delete()
+                throw IllegalStateException("Não foi possível finalizar o APK baixado")
             }
 
             val apkUri = FileProvider.getUriForFile(
