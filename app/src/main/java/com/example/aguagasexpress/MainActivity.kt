@@ -1013,39 +1013,82 @@ private fun shareLatestApk(
     val label = when (normalizedRole) {
         "cliente" -> "Cliente"
         "entregador" -> "Entregador"
+        "desenvolvedor" -> "Desenvolvedor"
         else -> "Empresa"
     }
     val fileName = when (normalizedRole) {
         "cliente" -> "AguaGasExpress-Cliente.apk"
         "entregador" -> "AguaGasExpress-Entregador.apk"
+        "desenvolvedor" -> "AguaGasExpress-Desenvolvedor.apk"
         else -> "AguaGasExpress-Empresa.apk"
     }
-    val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
+    // O workflow publica os quatro APKs na release apk-test-latest.
+    val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/$fileName"
     val normalizedCode = normalizeCompanyCode(companyCode)
-    val inviteUrl = if (
-        normalizedRole in setOf("cliente", "entregador") &&
-        normalizedCode.isNotBlank() && companyId.isNotBlank()
-    ) {
-        makeInviteLink(normalizedRole, normalizedCode, companyId)
-    } else ""
-    val shareText = if (inviteUrl.isNotBlank()) {
-        val recipient = if (normalizedRole == "entregador") "entregador" else "cliente"
-        val inviteTitle = if (normalizedRole == "entregador") "LINK ÚNICO DO ENTREGADOR" else "LINK ÚNICO DO CLIENTE"
-        "Água & Gás Express — $inviteTitle\n\n" +
-            "$inviteUrl\n\n" +
-            "Envie somente este link ao $recipient. Se o aplicativo ainda não estiver instalado, o link inicia o download. Depois de instalar, toque novamente neste mesmo link para abrir o cadastro já vinculado à empresa $normalizedCode. Não envie um segundo link de APK."
-    } else {
-        "Água & Gás Express — APK do $label\n\nBaixe e instale a versão mais recente por este link:\n$apkUrl"
-    }
-    try {
-        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
-            putExtra(Intent.EXTRA_TEXT, shareText)
-        }, "Enviar APK do $label"))
-    } catch (_: Exception) {
-        android.widget.Toast.makeText(context, "Não foi possível compartilhar o APK do $label.", android.widget.Toast.LENGTH_LONG).show()
-    }
+
+    Thread {
+        var connection: HttpURLConnection? = null
+        try {
+            val targetDir = java.io.File(context.filesDir, "downloaded-apks")
+            if (!targetDir.exists()) targetDir.mkdirs()
+            val apkFile = java.io.File(targetDir, fileName)
+            connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 20000
+                readTimeout = 30000
+                instanceFollowRedirects = true
+                requestMethod = "GET"
+            }
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("Download HTTP ${connection.responseCode}")
+            }
+            connection.inputStream.use { input ->
+                apkFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (!apkFile.isFile || apkFile.length() <= 0L) {
+                throw IllegalStateException("APK vazio")
+            }
+
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                context.packageName + ".fileprovider",
+                apkFile
+            )
+            val message = if (normalizedRole == "cliente" || normalizedRole == "entregador") {
+                "Água & Gás Express — APK do $label\n" +
+                    (if (normalizedCode.isNotBlank()) "Código da empresa: $normalizedCode\n" else "") +
+                    (if (companyId.isNotBlank()) "Identificador da empresa: $companyId\n" else "") +
+                    "\nAnexei o arquivo APK para instalar. Abra o aplicativo e confirme o vínculo com a empresa usando os dados acima, caso solicitado."
+            } else {
+                "Água & Gás Express — APK do $label\nArquivo APK anexado para instalação."
+            }
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/vnd.android.package-archive"
+                        putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — APK do $label")
+                        putExtra(Intent.EXTRA_TEXT, message)
+                        putExtra(Intent.EXTRA_STREAM, apkUri)
+                        clipData = android.content.ClipData.newUri(context.contentResolver, fileName, apkUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, "Enviar arquivo APK do $label"))
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "Não foi possível compartilhar o APK do $label: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(
+                    context,
+                    "Falha ao baixar o APK atualizado. Verifique se a última compilação foi publicada no GitHub. ${e.message ?: ""}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        } finally {
+            connection?.disconnect()
+        }
+    }.start()
 }
 
 @Composable
@@ -3231,7 +3274,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 }
                 // Compartilha convites vinculados à empresa para cliente e entregador.
                 MainButton("📲 ENVIAR APK DO CLIENTE") { shareLatestApk(context, "cliente", prefs.getString("company_code", "").orEmpty(), companyId) }
-                MainButton("🚚 ENVIAR LINK DO ENTREGADOR") { shareLatestApk(context, "entregador", prefs.getString("company_code", "").orEmpty(), companyId) }
+                MainButton("🚚 ENVIAR APK DO ENTREGADOR") { shareLatestApk(context, "entregador", prefs.getString("company_code", "").orEmpty(), companyId) }
                 MainButton("🗑️ EXCLUIR CLIENTE") { showCustomersDeleteDialog = true }
                 if (showCustomersDeleteDialog) {
                     AlertDialog(
