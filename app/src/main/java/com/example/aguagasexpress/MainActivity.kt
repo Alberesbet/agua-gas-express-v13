@@ -4416,7 +4416,7 @@ private fun TrackingMapView(order: Order) {
                     function initMap(){
                       if(!window.L){document.getElementById('fallback').innerText='Não foi possível carregar o mapa. Confira a conexão com a internet e tente novamente.';return false;}
                       map=L.map('map').setView([-8.05,-34.9],12);
-                      var baseLayer=L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors, OSM France'}).addTo(map);
+                      var baseLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);
                       baseLayer.on('tileerror',function(){
                         if(!window._mapFallbackUsed){
                           window._mapFallbackUsed=true;
