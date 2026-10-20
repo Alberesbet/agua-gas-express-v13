@@ -1153,6 +1153,8 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var companyNeighborhood by remember { mutableStateOf("") }
     var companyCity by remember { mutableStateOf("") }
     var companyState by remember { mutableStateOf("") }
+    var companyDocumentType by remember { mutableStateOf("CPF") }
+    var companyDocumentNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -1722,6 +1724,14 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(companyNumber, { companyNumber = it }, label = { Text("Número") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
+                Text("DOCUMENTO DA EMPRESA", color = LightBlue, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("CPF", "CNPJ").forEach { type ->
+                        Button(onClick = { companyDocumentType = type; companyDocumentNumber = "" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (companyDocumentType == type) Green else Color(0xFF315A85))) { Text(type) }
+                    }
+                }
+                OutlinedTextField(companyDocumentNumber, { companyDocumentNumber = it.filter(Char::isDigit).take(if (companyDocumentType == "CPF") 11 else 14) }, label = { Text("Número do $companyDocumentType") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(password, { password = it }, label = { Text("Criar senha") }, singleLine = true, visualTransformation = if (showCompanyPassword) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { TextButton(onClick = { showCompanyPassword = !showCompanyPassword }) { Text(if (showCompanyPassword) "OCULTAR" else "MOSTRAR", color = LightBlue) } }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Repetir senha") }, singleLine = true, visualTransformation = if (showCompanyConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { TextButton(onClick = { showCompanyConfirmPassword = !showCompanyConfirmPassword }) { Text(if (showCompanyConfirmPassword) "OCULTAR" else "MOSTRAR", color = LightBlue) } }, modifier = Modifier.fillMaxWidth())
@@ -1734,6 +1744,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         companyCep.filter(Char::isDigit).length != 8 -> error = "Informe um CEP válido."
                         companyStreet.isBlank() || companyCity.isBlank() || companyState.length != 2 -> error = "Pesquise um CEP válido antes de continuar."
                         companyNumber.isBlank() -> error = "Informe o número."
+                        companyDocumentNumber.filter(Char::isDigit).length != (if (companyDocumentType == "CPF") 11 else 14) -> error = "Informe um número válido para $companyDocumentType."
                         password.length < 6 -> error = "A senha deve ter pelo menos 6 caracteres."
                         password != confirmPassword -> error = "As senhas não coincidem."
                         else -> ensureFirebase {
@@ -1742,10 +1753,10 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             firestore.collection("companies").document(pendingId).get().addOnSuccessListener { doc ->
                                 if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) { loading = false; error = "Autorização da empresa não encontrada."; return@addOnSuccessListener }
                                 val permanent = doc.getBoolean("licensePermanent") ?: false; val expiry = doc.getLong("licenseExpiresAt") ?: 0L; val code = doc.getString("companyCode") ?: generateCompanyCode(); val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState").filter { it.isNotBlank() }.joinToString(" — ")
-                                val updated = mapOf("name" to companyName.trim(), "responsible" to responsible.trim(), "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(), "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(), "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(), "companyState" to companyState.trim().uppercase(Locale.ROOT), "email" to email.trim(), "adminPasswordHash" to hashPassword(password), "originAddress" to origin, "activated" to true, "active" to true, "companyActivatedAt" to System.currentTimeMillis())
+                                val updated = mapOf("name" to companyName.trim(), "responsible" to responsible.trim(), "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(), "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(), "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(), "companyState" to companyState.trim().uppercase(Locale.ROOT), "companyDocumentType" to companyDocumentType, "companyDocumentNumber" to companyDocumentNumber.trim(), "email" to email.trim(), "adminPasswordHash" to hashPassword(password), "originAddress" to origin, "activated" to true, "active" to true, "companyActivatedAt" to System.currentTimeMillis())
                                 firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge()).addOnSuccessListener {
                                     saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
-                                    prefs.edit().putString("company_responsible", responsible.trim()).putString("company_email", email.trim()).putString("admin_password_hash", hashPassword(password)).putString("company_role", "admin").putBoolean("company_authenticated", true).putBoolean("company_just_registered", true).remove("pending_company_id").remove("invite_profile").remove("invite_company_code").apply()
+                                    prefs.edit().putString("company_responsible", responsible.trim()).putString("company_email", email.trim()).putString("company_cep", companyCep.trim()).putString("company_street", companyStreet.trim()).putString("company_number", companyNumber.trim()).putString("company_neighborhood", companyNeighborhood.trim()).putString("company_city", companyCity.trim()).putString("company_state", companyState.trim().uppercase(Locale.ROOT)).putString("company_document_type", companyDocumentType).putString("company_document_number", companyDocumentNumber.trim()).putString("admin_password_hash", hashPassword(password)).putString("company_role", "admin").putBoolean("company_authenticated", true).putBoolean("company_just_registered", true).remove("pending_company_id").remove("invite_profile").remove("invite_company_code").apply()
                                     loading = false; mode = "app"; error = ""
                                 }.addOnFailureListener { e ->
                                     loading = false
