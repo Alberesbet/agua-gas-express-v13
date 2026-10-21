@@ -32,9 +32,22 @@ class AppMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // The app saves the current token with the customer's order / company config.
-        // Token refresh is handled when the relevant profile next opens.
         super.onNewToken(token)
+        if (token.isBlank()) return
+
+        // Persist the refreshed token immediately; do not wait for the user to reopen the app.
+        val prefs = getSharedPreferences("agua_gas_preferences", Context.MODE_PRIVATE)
+        prefs.edit().putString("customer_fcm_token", token).apply()
+
+        // If this installation is the company/admin profile, refresh its token in Firestore too.
+        val companyId = prefs.getString("company_id", "").orEmpty()
+        val isAdmin = !prefs.getString("admin_password_hash", null).isNullOrBlank()
+        if (isAdmin && companyId.isNotBlank()) {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("companies").document(companyId)
+                .collection("config").document("main")
+                .set(mapOf("adminFcmToken" to token), com.google.firebase.firestore.SetOptions.merge())
+        }
     }
 
     private fun showNotification(title: String, body: String) {
