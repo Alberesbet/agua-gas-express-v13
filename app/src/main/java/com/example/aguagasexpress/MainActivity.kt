@@ -1495,6 +1495,33 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }
     }
 
+    // Compartilha somente o acesso Web da empresa. O APK existente permanece inalterado.
+    fun shareWebCompanyLink(companyId: String, code: String, companyName: String, authorizedEmail: String) {
+        val normalized = normalizeCompanyCode(code)
+        if (companyId.isBlank() || normalized.length < 6) {
+            masterStatus = "Não foi possível gerar o link Web: confira o cadastro da empresa."
+            return
+        }
+        val webUrl = "https://agua-e-gas-express.web.app/invite/empresa/?perfil=empresa" +
+            "&empresa=${Uri.encode(normalized)}&empresaId=${Uri.encode(companyId)}"
+        val message = "💻 Água & Gás Express — PAINEL WEB DA EMPRESA\n\n" +
+            "$webUrl\n\n" +
+            "Entre ou faça o cadastro usando o e-mail autorizado: $authorizedEmail. " +
+            "O painel Web usa os mesmos dados do aplicativo Android desta empresa."
+        try {
+            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Água & Gás Express — Link Web da Empresa")
+                putExtra(Intent.EXTRA_TEXT, message)
+            }, "Enviar link Web da empresa"))
+            masterStatus = "Link Web preparado para envio."
+        } catch (_: Exception) {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Link Web da empresa", message))
+            masterStatus = "Link Web copiado para a área de transferência."
+        }
+    }
+
     fun loadCompanyLocally(doc: com.google.firebase.firestore.DocumentSnapshot, role: String = "admin") {
         val expiry = doc.getLong("licenseExpiresAt") ?: 0L
         val permanent = doc.getBoolean("licensePermanent") ?: false
@@ -1700,6 +1727,12 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { shareLatestApk(context, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
                 Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { shareWebCompanyLink(masterCompanyId, masterCompanyCode, masterCompanyName, masterCompanyEmail) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Blue)
+                ) { Text("💻 ENVIAR LINK WEB DA EMPRESA") }
+                Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { masterCompanyDetailsOpen = false; masterCompanyMessage = "" }) { Text("VOLTAR", color = Color.White) }
             } else {
                 Text("👑 PAINEL DO PROPRIETÁRIO", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
@@ -1714,6 +1747,12 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Text("E-mail autorizado: $masterCompanyEmail", color = LightBlue, fontSize = 12.sp)
                     Text("Telefone: ${masterCompanyPhone.ifBlank { "não informado" }}", color = Color.White, fontSize = 12.sp)
                     Button(onClick = { shareLatestApk(context, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { shareWebCompanyLink(masterCompanyId, masterCompanyCode, masterCompanyName, masterCompanyEmail) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Blue)
+                    ) { Text("💻 ENVIAR LINK WEB DA EMPRESA") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
