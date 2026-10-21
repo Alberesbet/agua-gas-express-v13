@@ -4837,3 +4837,4 @@ private fun TrackingMapView(order: Order) {
 private fun BackButton(onClick: () -> Unit) {
     TextButton(onClick = onClick) { Text("Voltar", color = LightBlue) }
 }
+// Build validation trigger: compile the current app source as requested on 2026-10-21.
