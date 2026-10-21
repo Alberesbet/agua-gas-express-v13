@@ -1292,7 +1292,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             masterLicenseDays = 0
             masterLicenseExpiresAt = 0L
             masterCompanyActive = true
-            masterCompanyMessage = "Teste encerrado. Empresa ativada como licença definitiva."
+            masterCompanyMessage = "Licença definitiva ativada."
             loading = false
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível finalizar o teste: ${e.localizedMessage ?: "erro no Firebase"}" }
     }
@@ -1551,9 +1551,9 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         Button(enabled = !loading, onClick = { extendCompanyTrial() }, modifier = Modifier.weight(1f)) { Text("+ DIAS") }
                     }
                     Spacer(Modifier.height(6.dp))
-                    Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ ENCERRAR TESTE E TORNAR DEFINITIVA") }
+                    Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
                 } else if (masterLicensePermanent && masterCompanyActive) {
-                    Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+                    Text("Licença definitiva ativa — sem vencimento.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(
@@ -1565,7 +1565,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         disabledContainerColor = Color(0xFF5A2525)
                     )
                 ) {
-                    Text("✖ CANCELAR LICENÇA / BLOQUEAR EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                    Text("✖ CANCELAR LICENÇA DA EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
                 }
                 if (!masterCompanyActive) {
                     Text("Acesso desta empresa já está cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
@@ -4471,13 +4471,12 @@ private fun TrackingMapView(order: Order) {
                     function initMap(){
                       if(!window.L){document.getElementById('fallback').innerText='Não foi possível carregar o mapa. Confira a conexão com a internet e tente novamente.';return false;}
                       map=L.map('map').setView([-8.05,-34.9],12);
-                      var baseLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);
+                      // Não consultar os servidores públicos de tiles do OpenStreetMap:
+                      // a política deles bloqueou este aplicativo. Usar CARTO como camada primária.
+                      var baseLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',crossOrigin:true}).addTo(map);
                       baseLayer.on('tileerror',function(){
-                        if(!window._mapFallbackUsed){
-                          window._mapFallbackUsed=true;
-                          map.removeLayer(baseLayer);
-                          baseLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd'}).addTo(map);
-                        }
+                        document.getElementById('fallback').style.display='block';
+                        document.getElementById('fallback').innerText='Não foi possível carregar o mapa. Verifique a internet e tente novamente.';
                       });
                       line=L.polyline([],{color:'#1688E8',weight:5}).addTo(map);
                       document.getElementById('fallback').style.display='none';
