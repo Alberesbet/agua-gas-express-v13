@@ -36,5 +36,10 @@
                 android:resource="@xml/apk_share_paths" />
         </provider>
         <service android:name=".DeliveryLocationService" android:foregroundServiceType="location" android:exported="false" />
+        <service android:name=".AppMessagingService" android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
