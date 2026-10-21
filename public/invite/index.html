@@ -134,10 +134,16 @@ if(perfil==='cliente'){
   addButton('Se o download não começar, abrir a página de downloads',releasePage,true);
   info.textContent='Código da empresa: '+(empresa||'não informado');
 }else if(perfil==='empresa'){
-  title.textContent='Acesso da Empresa';
-  msg.textContent='Escolha como acessar: instale o aplicativo Android da Empresa ou entre pelo painel web. Use o mesmo código da empresa.';
-  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
+  title.textContent='Convite da Empresa';
+  msg.textContent='Escolha como deseja continuar: abra o painel pelo navegador ou use o aplicativo Android. O código da empresa será mantido.';
+  const webUrl = new URL('/empresa/', location.origin);
+  if(empresa) webUrl.searchParams.set('empresa', empresa);
+  if(empresaId) webUrl.searchParams.set('empresaId', empresaId);
+  webUrl.searchParams.set('perfil','empresa');
+  addButton('ABRIR NA WEB — PAINEL DA EMPRESA',webUrl.toString());
+  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk,true);
   addOpenAppButton('ABRIR APLICATIVO DA EMPRESA');
+  info.textContent='Se já tem cadastro, escolha “ABRIR NA WEB”. Use o e-mail autorizado da empresa.';
 }else if(perfil==='proprietario'){
   title.textContent='Acesso do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor.';
