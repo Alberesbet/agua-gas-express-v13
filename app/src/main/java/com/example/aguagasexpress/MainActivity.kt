@@ -1360,6 +1360,41 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             .show()
     }
 
+    fun cancelPermanentLicense() {
+        val id = masterCompanyId
+        if (id.isBlank()) { masterCompanyMessage = "Empresa não encontrada."; return }
+        if (!masterLicensePermanent) { masterCompanyMessage = "Esta empresa não possui licença definitiva ativa."; return }
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Cancelar licença definitiva?")
+            .setMessage("A licença definitiva de ${masterCompanyName.ifBlank { "esta empresa" }} será cancelada e o acesso da empresa será bloqueado. Esta ação não exclui o cadastro da empresa.")
+            .setNegativeButton("VOLTAR", null)
+            .setPositiveButton("SIM, CANCELAR LICENÇA") { _, _ ->
+                loading = true
+                val now = System.currentTimeMillis()
+                firestore.collection("companies").document(id).update(mapOf(
+                    "active" to false,
+                    "licensePermanent" to false,
+                    "licenseStatus" to "CANCELLED",
+                    "licenseDays" to 0,
+                    "licenseExpiresAt" to now,
+                    "licenseCancelledAt" to now
+                )).addOnSuccessListener {
+                    masterCompanyActive = false
+                    masterLicensePermanent = false
+                    masterLicenseStatus = "CANCELLED"
+                    masterLicenseDays = 0
+                    masterLicenseExpiresAt = now
+                    masterCompanyMessage = "Licença definitiva cancelada. O cadastro da empresa foi mantido."
+                    loading = false
+                    loadLatestMasterCompany()
+                }.addOnFailureListener { e ->
+                    loading = false
+                    masterCompanyMessage = "Não foi possível cancelar a licença definitiva: ${e.localizedMessage ?: "erro no Firebase"}"
+                }
+            }
+            .show()
+    }
+
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
@@ -1554,6 +1589,15 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
                 } else if (masterLicensePermanent && masterCompanyActive) {
                     Text("Licença definitiva ativa — sem vencimento.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        enabled = !loading && masterCompanyId.isNotBlank(),
+                        onClick = { cancelPermanentLicense() },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
+                    ) {
+                        Text("✖ CANCELAR LICENÇA DEFINITIVA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(
