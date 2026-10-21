@@ -43,7 +43,9 @@ class DeliveryLocationService : Service(), LocationListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        orderId = intent?.getStringExtra("orderId").orEmpty()
+        val prefs = getSharedPreferences("delivery_tracking", Context.MODE_PRIVATE)
+        orderId = intent?.getStringExtra("orderId")?.takeIf { it.isNotBlank() }
+            ?: prefs.getString("active_order_id", "").orEmpty()
         if (orderId.isBlank()) {
             stopSelf()
             return START_NOT_STICKY
@@ -53,11 +55,18 @@ class DeliveryLocationService : Service(), LocationListener {
             stopSelf()
             return START_NOT_STICKY
         }
+        prefs.edit().putString("active_order_id", orderId).apply()
         try {
+            // Publish the last known position immediately so the client does not see only the fixed destination.
+            val lastKnown = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+                .mapNotNull { provider -> try { locationManager.getLastKnownLocation(provider) } catch (_: Exception) { null } }
+                .maxByOrNull { it.time }
+            if (lastKnown != null) onLocationChanged(lastKnown)
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 5f, this)
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 10f, this)
         } catch (_: SecurityException) {
             stopSelf()
+            return START_NOT_STICKY
         } catch (_: Exception) { }
         return START_STICKY
     }
@@ -79,6 +88,7 @@ class DeliveryLocationService : Service(), LocationListener {
                 "trackingLat" to location.latitude,
                 "trackingLng" to location.longitude,
                 "trackingActive" to true,
+                "trackingUpdatedAt" to System.currentTimeMillis(),
                 "trackingPath" to newPath
             ), SetOptions.merge())
         }
@@ -90,9 +100,8 @@ class DeliveryLocationService : Service(), LocationListener {
 
     override fun onDestroy() {
         try { locationManager.removeUpdates(this) } catch (_: Exception) { }
-        if (orderId.isNotBlank()) {
-            firestore.collection("orders").document(orderId).set(mapOf("trackingActive" to false), SetOptions.merge())
-        }
+        // Do not erase the last location when Android recreates/kills the service;
+        // the customer keeps seeing the last point until the next live update.
         super.onDestroy()
     }
 
