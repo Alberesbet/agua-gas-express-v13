@@ -1136,11 +1136,15 @@ private fun shareLatestApk(
                 context.packageName + ".fileprovider",
                 apkFile
             )
+            val inviteLink = if ((normalizedRole == "cliente" || normalizedRole == "entregador") && normalizedCode.isNotBlank()) {
+                makeInviteLink(normalizedRole, normalizedCode, companyId, "android")
+            } else ""
             val message = if (normalizedRole == "cliente" || normalizedRole == "entregador") {
                 "Água & Gás Express — APK do $label\n" +
                     (if (normalizedCode.isNotBlank()) "Código da empresa: $normalizedCode\n" else "") +
                     (if (companyId.isNotBlank()) "Identificador da empresa: $companyId\n" else "") +
-                    "\nAnexei o arquivo APK para instalar. Abra o aplicativo e confirme o vínculo com a empresa usando os dados acima, caso solicitado."
+                    (if (inviteLink.isNotBlank()) "\nLINK DE VÍNCULO AUTOMÁTICO: $inviteLink\n" else "") +
+                    "\nAnexei o arquivo APK para instalar. Depois da instalação, toque no link acima para abrir o aplicativo já vinculado à empresa, sem digitar o código."
             } else {
                 "Água & Gás Express — APK do $label\nArquivo APK anexado para instalação."
             }
