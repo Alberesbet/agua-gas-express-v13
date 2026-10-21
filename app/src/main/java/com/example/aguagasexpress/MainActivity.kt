@@ -774,7 +774,7 @@ private fun buildPixCopyPaste(key: String, recipient: String, city: String, amou
         .trim().take(max).ifBlank { "NAO INFORMADO" }
     val merchant = safe(recipient, 25)
     val merchantCity = safe(city, 15)
-    val account = pixTlv("00", "BR.GOV.BCB.PIX") + pixTlv("02", key.trim())
+    val account = pixTlv("00", "BR.GOV.BCB.PIX") + pixTlv("01", key.trim())
     val additional = pixTlv("05", "***")
     var payload = pixTlv("00", "01") +
         pixTlv("26", account) +
