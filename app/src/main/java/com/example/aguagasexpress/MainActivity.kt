@@ -1846,7 +1846,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CONSULTANDO..." else "CONTINUAR COM ESTE E-MAIL") }
         } else if (mode == "register") {
             if (masterRegistration) {
-                // Formulário de autorização do desenvolvedor: somente nome, responsável, telefone e e-mail.
                 Text("CADASTRAR EMPRESA", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                 Text("O desenvolvedor informa apenas os dados básicos para autorizar a empresa. Depois, a própria empresa completa o cadastro no aplicativo dela.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
@@ -1899,11 +1898,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(companyPhone, { companyPhone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(companyCep, { value -> companyCep = value.filter(Char::isDigit).take(8); if (companyCep.length == 8) { companyCepSearching = true; scope.launch { val r = lookupCep(companyCep); companyCepSearching = false; if (r != null && !r.optBoolean("erro", false)) { companyStreet = r.optString("logradouro"); companyNeighborhood = r.optString("bairro"); companyCity = r.optString("localidade"); companyState = r.optString("uf").uppercase(Locale.ROOT) } else error = "CEP não encontrado." } } }, label = { Text(if (companyCepSearching) "CEP (pesquisando...)" else "CEP") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                if (companyStreet.isNotBlank()) Text("$companyStreet — $companyNeighborhood — $companyCity/$companyState", color = LightBlue, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(companyNumber, { companyNumber = it }, label = { Text("Número") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(companyStreet, { companyStreet = it }, label = { Text("Rua / Avenida") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Text("DOCUMENTO DA EMPRESA", color = LightBlue, fontWeight = FontWeight.Bold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1933,7 +1928,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                             val pendingId = prefs.getString("pending_company_id", "").orEmpty()
                             firestore.collection("companies").document(pendingId).get().addOnSuccessListener { doc ->
                                 if (!doc.exists() || doc.getString("email")?.equals(email.trim(), true) != true) { loading = false; error = "Autorização da empresa não encontrada."; return@addOnSuccessListener }
-                                val permanent = doc.getBoolean("licensePermanent") ?: false; val expiry = doc.getLong("licenseExpiresAt") ?: 0L; val code = doc.getString("companyCode") ?: generateCompanyCode(); val origin = listOf(companyCep, "$companyStreet, $companyNumber", companyNeighborhood, "$companyCity - $companyState").filter { it.isNotBlank() }.joinToString(" — ")
+                                val permanent = doc.getBoolean("licensePermanent") ?: false; val expiry = doc.getLong("licenseExpiresAt") ?: 0L; val code = doc.getString("companyCode") ?: generateCompanyCode(); val origin = companyStreet.trim()
                                 val updated = mapOf("name" to companyName.trim(), "responsible" to responsible.trim(), "companyPhone" to companyPhone.trim(), "companyCep" to companyCep.trim(), "companyStreet" to companyStreet.trim(), "companyNumber" to companyNumber.trim(), "companyNeighborhood" to companyNeighborhood.trim(), "companyCity" to companyCity.trim(), "companyState" to companyState.trim().uppercase(Locale.ROOT), "companyDocumentType" to companyDocumentType, "companyDocumentNumber" to companyDocumentNumber.trim(), "email" to email.trim(), "adminPasswordHash" to hashPassword(password), "originAddress" to origin, "activated" to true, "active" to true, "companyActivatedAt" to System.currentTimeMillis())
                                 firestore.collection("companies").document(doc.id).set(updated, SetOptions.merge()).addOnSuccessListener {
                                     saveCompanyLocal(prefs, doc.id, companyName.trim(), code, expiry, permanent, doc.getString("licenseKey") ?: "", companyPhone.trim(), origin)
@@ -4837,4 +4832,3 @@ private fun TrackingMapView(order: Order) {
 private fun BackButton(onClick: () -> Unit) {
     TextButton(onClick = onClick) { Text("Voltar", color = LightBlue) }
 }
-// Build validation trigger: compile the current app source as requested on 2026-10-21.
