@@ -1557,15 +1557,15 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(
-                    enabled = !loading && masterCompanyActive && masterCompanyId.isNotBlank(),
+                    enabled = !loading && masterCompanyId.isNotBlank(),
                     onClick = { cancelCompanyLicense() },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFB42318),
                         disabledContainerColor = Color(0xFF5A2525)
                     )
                 ) {
-                    Text("✖ CANCELAR LICENÇA DA EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                    Text("✖ CANCELAR LICENÇA DO TESTE OU DEFINITIVA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
                 }
                 if (!masterCompanyActive) {
                     Text("Acesso desta empresa já está cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
@@ -1649,15 +1649,15 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                         colors = ButtonDefaults.buttonColors(containerColor = Green)
                                     ) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
                                 }
-                                if (listedActive) {
+                                {
                                     Button(
                                         enabled = !loading,
                                         onClick = {
                                             android.app.AlertDialog.Builder(context)
                                                 .setTitle("Cancelar licença da empresa?")
-                                                .setMessage("A empresa ${listedName} perderá o acesso, seja durante o teste ou com licença definitiva.")
+                                                .setMessage("A empresa ${listedName} perderá o acesso. Esta ação cancela tanto o período de teste quanto a licença definitiva.")
                                                 .setNegativeButton("VOLTAR", null)
-                                                .setPositiveButton("CANCELAR LICENÇA") { _, _ ->
+                                                .setPositiveButton("CONFIRMAR CANCELAMENTO") { _, _ ->
                                                     val now = System.currentTimeMillis()
                                                     companyDoc.reference.update(mapOf(
                                                         "active" to false,
@@ -1684,7 +1684,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                         },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
-                                    ) { Text("✖ CANCELAR LICENÇA") }
+                                    ) { Text("✖ CANCELAR LICENÇA DO TESTE OU DEFINITIVA") }
                                 }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
