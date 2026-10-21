@@ -1587,8 +1587,13 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     }
                     Spacer(Modifier.height(6.dp))
                     Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
-                } else if (masterLicensePermanent && masterCompanyActive) {
+                }
+                if (masterLicensePermanent && masterCompanyActive) {
                     Text("Licença definitiva ativa — sem vencimento.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+                }
+                // Mostrar a ação sempre nos dados da empresa ativa, sem depender de
+                // masterLicensePermanent estar carregado corretamente na tela.
+                if (masterCompanyActive) {
                     Spacer(Modifier.height(6.dp))
                     Button(
                         enabled = !loading && masterCompanyId.isNotBlank(),
