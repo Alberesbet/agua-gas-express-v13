@@ -1502,7 +1502,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             masterStatus = "Não foi possível gerar o link Web: confira o cadastro da empresa."
             return
         }
-        val webUrl = "https://agua-e-gas-express.web.app/invite/empresa/?perfil=empresa" +
+        val webUrl = "https://alberesbet.github.io/agua-gas-express-v13/invite/empresa/?perfil=empresa" +
             "&empresa=${Uri.encode(normalized)}&empresaId=${Uri.encode(companyId)}"
         val message = "💻 Água & Gás Express — PAINEL WEB DA EMPRESA\n\n" +
             "$webUrl\n\n" +
