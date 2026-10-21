@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <application android:name=".AguaGasExpressApp" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="true" android:label="Água &amp; Gás Express" android:supportsRtl="true" android:theme="@style/Theme.AguaGasExpress" android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
@@ -36,6 +37,7 @@
                 android:resource="@xml/apk_share_paths" />
         </provider>
         <service android:name=".DeliveryLocationService" android:foregroundServiceType="location" android:exported="false" />
+        <service android:name=".VoiceAnnouncementService" android:foregroundServiceType="mediaPlayback" android:exported="false" />
         <service android:name=".AppMessagingService" android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
