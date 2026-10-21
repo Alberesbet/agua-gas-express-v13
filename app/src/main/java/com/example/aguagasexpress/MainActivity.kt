@@ -1472,13 +1472,13 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             return if (schemeStart >= 0) raw.substring(schemeStart).trim()
             else WEB_INVITE_BASE_URL + raw.removePrefix("n").removePrefix("N").trimStart('/')
         }
-        // Gera primeiro o link válido da empresa e deriva os outros dois dele,
-        // alterando somente o caminho e o parâmetro de perfil.
-        val direct = cleanInviteLink("empresa")
-        val clientLink = direct
-            .replace("/empresa/?perfil=empresa", "/cliente/?perfil=cliente")
-        val deliveryLink = direct
-            .replace("/empresa/?perfil=empresa", "/entregador/?perfil=entregador")
+        // O link principal abre uma tela de escolha: painel Web ou download Android.
+        // Os links de cliente e entregador continuam sendo convites individuais.
+        val companyBase = WEB_INVITE_BASE_URL.replace("/invite/", "/acesso-empresa/")
+        val companyIdParam = if (masterCompanyId.isBlank()) "" else "&empresaId=${Uri.encode(masterCompanyId)}"
+        val direct = companyBase + "?perfil=empresa&empresa=${Uri.encode(normalized)}" + companyIdParam
+        val clientLink = cleanInviteLink("cliente")
+        val deliveryLink = cleanInviteLink("entregador")
         val text = ("🏪 Água & Gás Express — LINK DA EMPRESA\n\n$direct\n\n👤 LINK DE CADASTRO DO CLIENTE\n$clientLink\n\n🛵 LINK DE CADASTRO DO ENTREGADOR\n$deliveryLink\n\nEnvie o link da empresa para o responsável acessar o painel. A empresa pode compartilhar os links individuais de cliente e entregador com sua equipe.\nE-mail autorizado: $emailForMessage")
             .replace(Regex("(?i)n(?=https://)"), "")
         try {

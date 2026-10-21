@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1730">
+<title>Água &amp; Gás Express — Acesso da Empresa</title>
+<style>
+:root{color-scheme:light;--navy:#0b1730;--blue:#1688e8;--orange:#ff963f;--green:#16834a;--ink:#18253a;--muted:#64748b;--line:#dce5ef;--paper:#f3f7fc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#eaf4ff,#f8fafc 52%,#fff1e4);font-family:Arial,sans-serif;color:var(--ink);display:grid;place-items:center;padding:22px}
+main{width:min(100%,850px)}header{background:linear-gradient(120deg,var(--navy),#123d69);border-radius:22px;padding:28px;color:white;box-shadow:0 14px 35px #0b17301a;border-bottom:4px solid var(--orange)}
+.brand{display:flex;align-items:center;gap:14px}.logo{width:54px;height:54px;flex:0 0 auto;border-radius:16px;background:white;color:var(--navy);display:grid;place-items:center;font-size:25px;font-weight:900}
+h1{margin:0;font-size:clamp(23px,4vw,34px)}header p{margin:8px 0 0;color:#d7eaff;line-height:1.5}
+.notice{margin:18px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:13px;line-height:1.5;color:var(--muted)}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:white;border:1px solid var(--line);border-radius:19px;padding:22px;box-shadow:0 8px 25px #0b17300b;display:flex;flex-direction:column;min-height:255px}
+.icon{font-size:32px}.card h2{margin:13px 0 8px;font-size:21px}.card p{margin:0 0 20px;color:var(--muted);line-height:1.55;flex:1}
+a{display:flex;align-items:center;justify-content:center;min-height:48px;padding:13px 16px;border-radius:11px;background:var(--green);color:white;text-decoration:none;text-align:center;font-weight:800;font-size:14px}
+a.web{background:var(--blue)}.code{font-weight:800;color:var(--navy);overflow-wrap:anywhere}
+footer{text-align:center;color:var(--muted);font-size:12px;margin:20px 0 0}
+@media(max-width:620px){body{padding:14px}.choices{grid-template-columns:1fr}header{padding:22px}.card{min-height:0}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="brand"><div class="logo">A+</div><div><h1>Água &amp; Gás Express</h1><p>Acesso da Empresa</p></div></div></header>
+<div class="notice">Como você deseja acessar o painel da empresa?<br>O código desta empresa é <span class="code" id="companyCode">—</span>.</div>
+<section class="choices">
+<article class="card"><div class="icon">💻</div><h2>Usar pela Web</h2><p>Entre pelo navegador do computador ou celular, sem instalar o aplicativo. O painel permite consultar pedidos, clientes, produtos, preços, Pix e entregadores.</p><a class="web" id="webLink" href="#">ENTRAR PELA WEB</a></article>
+<article class="card"><div class="icon">📱</div><h2>Baixar aplicativo Android</h2><p>Escolha esta opção para baixar e instalar o aplicativo Android da Empresa no celular.</p><a id="androidLink" href="#">BAIXAR APLICATIVO ANDROID</a></article>
+</section>
+<footer>Água &amp; Gás Express · Escolha de acesso</footer>
+</main>
+<script>
+const params=new URLSearchParams(location.search);
+const code=(params.get('empresa')||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+const companyId=(params.get('empresaId')||'').trim();
+document.getElementById('companyCode').textContent=code||'não informado';
+const basePath=location.pathname.startsWith('/agua-gas-express-v13/')?'/agua-gas-express-v13/':'/';
+const web=new URL(basePath+'invite/empresa/',location.origin);
+if(code)web.searchParams.set('empresa',code);
+if(companyId)web.searchParams.set('empresaId',companyId);
+web.searchParams.set('perfil','empresa');
+document.getElementById('webLink').href=web.toString();
+document.getElementById('androidLink').href='https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/AguaGasExpress-Empresa.apk';
+</script>
+</body>
+</html>
