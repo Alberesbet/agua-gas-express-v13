@@ -722,6 +722,39 @@ private fun playOrderAlertSound(context: Context) {
     } catch (_: Exception) { }
 }
 
+private fun showAdminNewOrderNotification(context: Context, count: Int) {
+    try {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "aguagas_new_orders"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(channelId, "Novos pedidos", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Avisos imediatos quando chega um pedido novo"
+                    enableVibration(true)
+                    setShowBadge(true)
+                }
+            )
+        }
+        val openApp = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val immutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        val pending = PendingIntent.getActivity(context, 7201, openApp, PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag)
+        val body = if (count == 1) "Chegou mais um pedido à empresa." else "Chegaram $count novos pedidos à empresa."
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Novo pedido")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        manager.notify(7201, notification)
+    } catch (_: Exception) { }
+}
+
 private fun announceNewOrder(context: Context) {
     try {
         lateinit var speech: android.speech.tts.TextToSpeech
@@ -2469,15 +2502,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                     }
                 }
 
-                // Alerta somente para pedido em dinheiro recém-criado ou quando o cliente
-                // informa o Pix no botão verde. Criar pedido Pix, por si só, não toca aviso.
-                val alertKeys = remoteOrders.filter { it.status == "Pendente" }.mapNotNull { order ->
-                    when {
-                        order.payment.equals("PIX", ignoreCase = true) && order.pixReported -> "${order.id}:pix"
-                        !order.payment.equals("PIX", ignoreCase = true) -> "${order.id}:cash"
-                        else -> null
-                    }
-                }.toSet()
+                // Todo pedido pendente deve avisar a empresa, inclusive pedidos Pix ainda não reportados.
+                val alertKeys = remoteOrders.filter { it.status == "Pendente" }.map { order -> order.id.toString() }.toSet()
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     if (!disposed && currentPage != Page.DELIVERY &&
                         !prefs.getString("admin_password_hash", null).isNullOrBlank()) {
@@ -2488,7 +2514,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         } else {
                             val previousSet = previousRaw.split(",").filter { it.isNotBlank() }.toSet()
                             val newKeys = alertKeys - previousSet
-                            if (MainActivity.isAppVisible && newKeys.isNotEmpty()) announceNewOrder(context)
+                            if (newKeys.isNotEmpty()) {
+                                showAdminNewOrderNotification(context, newKeys.size)
+                                if (MainActivity.isAppVisible) announceNewOrder(context)
+                            }
                             prefs.edit().putString("admin_seen_order_alert_keys", alertKeys.joinToString(",")).apply()
                         }
                     }
