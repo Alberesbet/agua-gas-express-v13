@@ -1649,8 +1649,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                         colors = ButtonDefaults.buttonColors(containerColor = Green)
                                     ) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
                                 }
-                                {
-                                    Button(
+                                Button(
                                         enabled = !loading,
                                         onClick = {
                                             android.app.AlertDialog.Builder(context)
@@ -1685,7 +1684,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
                                     ) { Text("✖ CANCELAR LICENÇA DO TESTE OU DEFINITIVA") }
-                                }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {
