@@ -1626,7 +1626,45 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                 Text(listedName, color = Color.White, fontWeight = FontWeight.Bold)
                                 Text(listedEmail, color = LightBlue, fontSize = 12.sp)
                                 Text("Código: ${listedCode} • ${if (listedActive) "Ativa" else "Inativa"}", color = Color.White, fontSize = 11.sp)
-                                Text("Toque para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    enabled = !loading,
+                                    onClick = {
+                                        android.app.AlertDialog.Builder(context)
+                                            .setTitle("CANCELAR PLANO / LICENÇA")
+                                            .setMessage("A empresa ${listedName} perderá o acesso. Isso cancela tanto o período de teste quanto a licença definitiva.")
+                                            .setNegativeButton("VOLTAR", null)
+                                            .setPositiveButton("SIM, CANCELAR LICENÇA") { _, _ ->
+                                                val now = System.currentTimeMillis()
+                                                companyDoc.reference.update(mapOf(
+                                                    "active" to false,
+                                                    "licensePermanent" to false,
+                                                    "licenseStatus" to "CANCELLED",
+                                                    "licenseDays" to 0,
+                                                    "licenseExpiresAt" to now,
+                                                    "licenseCancelledAt" to now
+                                                )).addOnSuccessListener {
+                                                    masterStatus = "Licença cancelada para ${listedName}."
+                                                    if (masterCompanyId == companyDoc.id) {
+                                                        masterCompanyActive = false
+                                                        masterLicensePermanent = false
+                                                        masterLicenseStatus = "CANCELLED"
+                                                        masterLicenseExpiresAt = now
+                                                        masterLicenseDays = 0
+                                                    }
+                                                    loadLatestMasterCompany()
+                                                }.addOnFailureListener { e ->
+                                                    masterStatus = "ERRO ao cancelar licença: ${e.localizedMessage ?: "verifique o Firebase"}"
+                                                }
+                                            }
+                                            .show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
+                                ) {
+                                    Text("✖ CANCELAR PLANO / LICENÇA DA EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                                }
+                                Text("Toque no nome para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
                                 Spacer(Modifier.height(8.dp))
                                 if (listedActive && !(companyDoc.getBoolean("licensePermanent") ?: false)) {
                                     Button(
@@ -1649,41 +1687,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                         colors = ButtonDefaults.buttonColors(containerColor = Green)
                                     ) { Text("✓ TORNAR LICENÇA DEFINITIVA") }
                                 }
-                                Button(
-                                        enabled = !loading,
-                                        onClick = {
-                                            android.app.AlertDialog.Builder(context)
-                                                .setTitle("Cancelar licença da empresa?")
-                                                .setMessage("A empresa ${listedName} perderá o acesso. Esta ação cancela tanto o período de teste quanto a licença definitiva.")
-                                                .setNegativeButton("VOLTAR", null)
-                                                .setPositiveButton("CONFIRMAR CANCELAMENTO") { _, _ ->
-                                                    val now = System.currentTimeMillis()
-                                                    companyDoc.reference.update(mapOf(
-                                                        "active" to false,
-                                                        "licensePermanent" to false,
-                                                        "licenseStatus" to "CANCELLED",
-                                                        "licenseDays" to 0,
-                                                        "licenseExpiresAt" to now,
-                                                        "licenseCancelledAt" to now
-                                                    )).addOnSuccessListener {
-                                                        masterStatus = "Licença cancelada para ${listedName}."
-                                                        if (masterCompanyId == companyDoc.id) {
-                                                            masterCompanyActive = false
-                                                            masterLicensePermanent = false
-                                                            masterLicenseStatus = "CANCELLED"
-                                                            masterLicenseExpiresAt = now
-                                                            masterLicenseDays = 0
-                                                        }
-                                                        loadLatestMasterCompany()
-                                                    }.addOnFailureListener { e ->
-                                                        masterStatus = "Não foi possível cancelar a licença: ${e.localizedMessage ?: "erro no Firebase"}"
-                                                    }
-                                                }
-                                                .show()
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
-                                    ) { Text("✖ CANCELAR LICENÇA DO TESTE OU DEFINITIVA") }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {
