@@ -1555,13 +1555,20 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 } else if (masterLicensePermanent && masterCompanyActive) {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
                 }
-                if (masterCompanyActive) {
-                    Spacer(Modifier.height(6.dp))
-                    Button(enabled = !loading, onClick = { cancelCompanyLicense() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))) {
-                        Text("✖ CANCELAR TESTE / LICENÇA DEFINITIVA")
-                    }
-                } else {
-                    Text("Acesso desta empresa cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    enabled = !loading && masterCompanyActive && masterCompanyId.isNotBlank(),
+                    onClick = { cancelCompanyLicense() },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFB42318),
+                        disabledContainerColor = Color(0xFF5A2525)
+                    )
+                ) {
+                    Text("✖ CANCELAR LICENÇA / BLOQUEAR EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                }
+                if (!masterCompanyActive) {
+                    Text("Acesso desta empresa já está cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { shareLatestApk(context, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
@@ -2432,8 +2439,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             "companyName" to (prefs.getString("company_name", "") ?: ""),
                             "companyResponsible" to (prefs.getString("company_responsible", "") ?: ""),
                             "companyEmail" to (prefs.getString("company_email", "") ?: ""),
-                            "companyDocumentType" to (prefs.getString("company_document_type", "") ?: ""),
-                            "companyDocumentNumber" to (prefs.getString("company_document_number", "") ?: ""),
                             "companyDocumentType" to (prefs.getString("company_document_type", "") ?: ""),
                             "companyDocumentNumber" to (prefs.getString("company_document_number", "") ?: ""),
                             "companyCep" to (prefs.getString("company_cep", "") ?: ""),
