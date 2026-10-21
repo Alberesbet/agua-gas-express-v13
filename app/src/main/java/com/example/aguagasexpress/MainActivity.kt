@@ -2522,6 +2522,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
             "companyName" to (prefs.getString("company_name", "") ?: ""),
             "companyResponsible" to (prefs.getString("company_responsible", "") ?: ""),
             "companyEmail" to (prefs.getString("company_email", "") ?: ""),
+            "companyDocumentType" to (prefs.getString("company_document_type", "") ?: ""),
+            "companyDocumentNumber" to (prefs.getString("company_document_number", "") ?: ""),
             "companyCep" to (prefs.getString("company_cep", "") ?: ""),
             "companyStreet" to (prefs.getString("company_street", "") ?: ""),
             "companyNumber" to (prefs.getString("company_number", "") ?: ""),
