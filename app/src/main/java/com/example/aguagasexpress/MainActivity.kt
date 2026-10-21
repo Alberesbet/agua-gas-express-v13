@@ -2290,6 +2290,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         }
     }
     var clientLastOrderId by remember { mutableStateOf<Long?>(null) }
+    var showCustomerPurchaseHistory by remember { mutableStateOf(false) }
     var orderSubmitting by remember { mutableStateOf(false) }
 
     val currentOrders by rememberUpdatedState(orders)
@@ -3117,6 +3118,38 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         clientProfileSaved = false
                         message = ""
                     }) { Text("Alterar endereço / dados", color = LightBlue) }
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedButton(onClick = { showCustomerPurchaseHistory = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("🧾 HISTÓRICO DE COMPRAS")
+                    }
+                    if (showCustomerPurchaseHistory) {
+                        val historyOrders = orders.filter { order ->
+                            !order.demo && order.paid && order.receiptGeneratedAt > 0L &&
+                                order.customerUid == FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                        }.sortedByDescending { it.receiptGeneratedAt }
+                        AlertDialog(
+                            onDismissRequest = { showCustomerPurchaseHistory = false },
+                            title = { Text("Histórico de compras") },
+                            text = {
+                                if (historyOrders.isEmpty()) {
+                                    Text("Nenhum recibo disponível ainda.")
+                                } else {
+                                    Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                                        historyOrders.forEach { historyOrder ->
+                                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Text(java.text.SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR")).format(java.util.Date(historyOrder.receiptGeneratedAt)), modifier = Modifier.weight(1f), color = Ink)
+                                                TextButton(onClick = { openOrderReceipt(context, historyOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }) {
+                                                    Text("VER RECIBO")
+                                                }
+                                            }
+                                            Divider()
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showCustomerPurchaseHistory = false }) { Text("FECHAR") } }
+                        )
+                    }
                     Spacer(Modifier.height(2.dp))
                     var clientQuantities by remember { mutableStateOf(products.associate { it.name to 0 }) }
                     LaunchedEffect(products.map { it.name to it.isGas }) {
