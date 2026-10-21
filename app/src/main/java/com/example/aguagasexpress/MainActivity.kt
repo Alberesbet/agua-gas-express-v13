@@ -798,19 +798,34 @@ private fun defaultProducts(gasPrice: Double = 95.0, comboWaterPrice: Double = 5
     Product("Gás", gasPrice, true)
 )
 
-private fun pixTlv(id: String, value: String): String = id + value.length.toString().padStart(2, '0') + value
+private fun pixTlv(id: String, value: String): String =
+    id + value.toByteArray(Charsets.UTF_8).size.toString().padStart(2, '0') + value
 
-private fun buildPixCopyPaste(key: String, recipient: String, city: String, amount: Double): String {
+private fun normalizePixKey(key: String, keyType: String): String {
+    val raw = key.trim()
+    return when (keyType.uppercase(Locale.ROOT)) {
+        "CPF", "CNPJ" -> raw.filter { it.isDigit() }
+        "TELEFONE", "PHONE", "CELULAR" -> {
+            val digits = raw.filter { it.isDigit() }
+            if (raw.trimStart().startsWith("+")) "+$digits" else digits
+        }
+        "E-MAIL", "EMAIL" -> raw.lowercase(Locale.ROOT)
+        else -> raw
+    }
+}
+
+private fun buildPixCopyPaste(key: String, keyType: String, recipient: String, city: String, amount: Double): String {
     fun safe(value: String, max: Int): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
         .replace(Regex("\\p{M}+"), "")
         .uppercase(Locale.ROOT)
         .replace(Regex("[^A-Z0-9 ]"), "")
         .trim().take(max).ifBlank { "NAO INFORMADO" }
+    val normalizedKey = normalizePixKey(key, keyType)
     val merchant = safe(recipient, 25)
     val merchantCity = safe(city, 15)
-    val account = pixTlv("00", "BR.GOV.BCB.PIX") + pixTlv("01", key.trim())
+    val account = pixTlv("00", "BR.GOV.BCB.PIX") + pixTlv("01", normalizedKey)
     val additional = pixTlv("05", "***")
-    var payload = pixTlv("00", "01") +
+    val payload = pixTlv("00", "01") +
         pixTlv("26", account) +
         pixTlv("52", "0000") +
         pixTlv("53", "986") +
@@ -823,7 +838,10 @@ private fun buildPixCopyPaste(key: String, recipient: String, city: String, amou
     var crc = 0xFFFF
     payload.toByteArray(Charsets.UTF_8).forEach { byte ->
         crc = crc xor ((byte.toInt() and 0xFF) shl 8)
-        repeat(8) { crc = if ((crc and 0x8000) != 0) (crc shl 1) xor 0x1021 else crc shl 1; crc = crc and 0xFFFF }
+        repeat(8) {
+            crc = if ((crc and 0x8000) != 0) (crc shl 1) xor 0x1021 else crc shl 1
+            crc = crc and 0xFFFF
+        }
     }
     return payload + crc.toString(16).uppercase(Locale.ROOT).padStart(4, '0')
 }
@@ -3507,6 +3525,7 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                         } else {
                                             val payload = buildPixCopyPaste(
                                                 pixKey,
+                                                pixKeyType,
                                                 pixRecipientName,
                                                 prefs.getString("company_city", "")?.ifBlank { "BRASILIA" } ?: "BRASILIA",
                                                 clientTotal
