@@ -28,12 +28,17 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
-      - name: Clear cached Gradle distribution
+      - name: Install Gradle directly (avoid broken wrapper distribution)
+        shell: bash
         run: |
+          set -euo pipefail
           rm -rf "$HOME/.gradle/wrapper/dists/gradle-8.13-bin"
-          chmod +x ./gradlew
+          curl --fail --location --retry 3 https://services.gradle.org/distributions/gradle-8.13-bin.zip --output "$RUNNER_TEMP/gradle-8.13-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-8.13-bin.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/gradle-8.13/bin/gradle"
+          "$RUNNER_TEMP/gradle-8.13/bin/gradle" --version
       - name: Compile all app profiles
-        run: ./gradlew :app:assembleAllProfilesDebug --stacktrace
+        run: "$RUNNER_TEMP/gradle-8.13/bin/gradle" --no-daemon --stacktrace :app:assembleAllProfilesDebug
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
