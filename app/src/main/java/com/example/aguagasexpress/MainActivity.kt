@@ -2194,6 +2194,9 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var salesMonthlyGas by remember { mutableStateOf(0) }
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var registeredCustomers by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var selectedCustomerName by remember { mutableStateOf("") }
+    var customerHistoryOrders by remember { mutableStateOf(listOf<Order>()) }
+    var showCustomerHistoryDialog by remember { mutableStateOf(false) }
     var showCustomersDeleteDialog by remember { mutableStateOf(false) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
@@ -3617,7 +3620,14 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                                 Text("Escolha o cliente que deseja excluir. A exclusão remove o cadastro da lista desta empresa.")
                                 registeredCustomers.forEach { (docId, customerName) ->
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                        Text(customerName, modifier = Modifier.weight(1f), color = Color.DarkGray)
+                                        TextButton(onClick = {
+                                            selectedCustomerName = customerName
+                                            customerHistoryOrders = orders.filter { order ->
+                                                !order.demo && order.companyId == companyId &&
+                                                    order.customer.equals(customerName, ignoreCase = true)
+                                            }.sortedByDescending { it.id }
+                                            showCustomerHistoryDialog = true
+                                        }, modifier = Modifier.weight(1f)) { Text(customerName, color = Blue) }
                                         TextButton(onClick = {
                                             FirebaseFirestore.getInstance().collection("customers").document(docId).delete()
                                                 .addOnSuccessListener { message = "Cadastro de $customerName excluído."; showCustomersDeleteDialog = false }
@@ -3628,6 +3638,55 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         },
                         confirmButton = { TextButton(onClick = { showCustomersDeleteDialog = false }) { Text("Fechar") }
+                        }
+                    )
+                }
+                if (showCustomerHistoryDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showCustomerHistoryDialog = false },
+                        title = { Text("Histórico de compras — $selectedCustomerName") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (customerHistoryOrders.isEmpty()) {
+                                    Text("Não há pedidos registrados para este cliente nesta empresa.")
+                                } else {
+                                    Text("Compras registradas: ${customerHistoryOrders.size}")
+                                    customerHistoryOrders.take(20).forEach { order ->
+                                        Column {
+                                            Text("Pedido #${if (order.orderNumber > 0) order.orderNumber else order.id}", fontWeight = FontWeight.Bold)
+                                            Text("${order.items} • ${money(order.total)}", fontSize = 12.sp)
+                                            Text("${order.status} • ${order.payment}", fontSize = 12.sp, color = Color.DarkGray)
+                                        }
+                                        Divider()
+                                    }
+                                    if (customerHistoryOrders.size > 20) Text("Mostrando os 20 pedidos mais recentes.")
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showCustomerHistoryDialog = false }) { Text("Fechar") } },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    val batch = firestore.batch()
+                                    customerHistoryOrders.forEach { order ->
+                                        batch.delete(firestore.collection("orders").document(order.id.toString()))
+                                    }
+                                    batch.commit()
+                                        .addOnSuccessListener {
+                                            val deletedIds = customerHistoryOrders.map { it.id }.toSet()
+                                            val remaining = orders.filterNot { it.id in deletedIds }
+                                            orders = remaining
+                                            saveOrders(prefs, remaining)
+                                            customerHistoryOrders = emptyList()
+                                            showCustomerHistoryDialog = false
+                                            message = "Histórico de compras de $selectedCustomerName excluído."
+                                        }
+                                        .addOnFailureListener { error ->
+                                            message = "Não foi possível excluir o histórico: ${error.localizedMessage ?: "erro"}"
+                                        }
+                                },
+                                enabled = customerHistoryOrders.isNotEmpty()
+                            ) { Text("Excluir histórico", color = Color.Red) }
                         }
                     )
                 }
