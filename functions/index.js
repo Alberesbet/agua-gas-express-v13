@@ -15,12 +15,23 @@ async function sendData(token, title, body) {
   try {
     await getMessaging().send({
       token,
+      // Data lets AppMessagingService speak the message when Android delivers the
+      // high-priority event; the notification payload also lets Android display the
+      // written alert if the app process is not currently running.
+      notification: {
+        title: String(title).slice(0, 100),
+        body: String(body).slice(0, 1000)
+      },
       data: {
         title: String(title).slice(0, 100),
         body: String(body).slice(0, 1000),
         voice: "true"
       },
-      android: { priority: "high", ttl: 60 * 60 * 1000 }
+      android: {
+        priority: "high",
+        ttl: 60 * 60 * 1000,
+        notification: { channelId: "aguagas_push", priority: "high" }
+      }
     });
   } catch (error) {
     console.error("FCM delivery failed:", error.code || error.message);
