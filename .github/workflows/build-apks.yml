@@ -80,6 +80,8 @@ jobs:
           name: APKs de teste — Água & Gás Express
           body: APKs separados por perfil, compilados automaticamente pelo GitHub Actions.
           make_latest: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
           files: |
             dist-apks/AguaGasExpress-Desenvolvedor.apk
             dist-apks/AguaGasExpress-Empresa.apk
