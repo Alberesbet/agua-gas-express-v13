@@ -182,12 +182,16 @@ if(perfil==='cliente'){
   addOpenAppButton('JÁ INSTALEI — ABRIR APLICATIVO');
   info.textContent='Código da empresa: '+(empresa||'não informado')+(empresa?'. O acesso será vinculado a esta empresa.':'');
 }else if(perfil==='empresa'){
-  title.textContent='Acesso da Empresa';
-  msg.textContent='Escolha como deseja acessar: instale o aplicativo Android da Empresa ou abra o painel pela web. Use o código do convite em qualquer opção.';
-  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk);
+  title.textContent='Convite da Empresa';
+  msg.textContent='Escolha como deseja continuar. Para usar o navegador, toque em “ABRIR NA WEB”. Para usar o aplicativo, escolha uma das opções Android.';
+  const webUrl = new URL('/empresa/', location.origin);
+  if(empresa) webUrl.searchParams.set('empresa', empresa);
+  if(empresaId) webUrl.searchParams.set('empresaId', empresaId);
+  webUrl.searchParams.set('perfil','empresa');
+  addButton('ABRIR NA WEB — PAINEL DA EMPRESA',webUrl.toString());
+  addButton('BAIXAR APLICATIVO ANDROID — EMPRESA',apk,true);
   addOpenAppButton('ABRIR APLICATIVO DA EMPRESA');
-  addButton('ENTRAR PELA WEB — EMPRESA','https://agua-e-gas-express.web.app/invite/empresa/?perfil=empresa&empresa='+encodeURIComponent(empresa)+(empresaId?'&empresaId='+encodeURIComponent(empresaId):''),true);
-  info.textContent='Código da empresa: '+(empresa||'não informado')+'. O cadastro/acesso usa o mesmo código no aplicativo e na web.';
+  info.textContent='Código da empresa: '+(empresa||'não informado')+'. No acesso Web, use o e-mail autorizado da empresa.';
 }else if(perfil==='proprietario'){
   title.textContent='Aplicativo do Desenvolvedor';
   msg.textContent='Baixe o aplicativo do Desenvolvedor para cadastrar empresas e enviar o convite de acesso.';
