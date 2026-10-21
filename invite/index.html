@@ -184,7 +184,7 @@ if(perfil==='cliente'){
 }else if(perfil==='empresa'){
   title.textContent='Convite da Empresa';
   msg.textContent='Escolha como deseja continuar. Para usar o navegador, toque em “ABRIR NA WEB”. Para usar o aplicativo, escolha uma das opções Android.';
-  const webUrl = new URL('/empresa/', location.origin);
+  const webUrl = new URL('empresa/', location.href);
   if(empresa) webUrl.searchParams.set('empresa', empresa);
   if(empresaId) webUrl.searchParams.set('empresaId', empresaId);
   webUrl.searchParams.set('perfil','empresa');
