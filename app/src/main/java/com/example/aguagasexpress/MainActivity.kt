@@ -1176,6 +1176,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterPermanent by remember { mutableStateOf(false) }
     var masterCompanyCode by remember { mutableStateOf("") }
     var masterCompanyName by remember { mutableStateOf("") }
+    var masterCompanyResponsible by remember { mutableStateOf("") }
     var masterCompanyEmail by remember { mutableStateOf("") }
     var masterStatus by remember { mutableStateOf("") }
     var masterCompanyPhone by remember { mutableStateOf("") }
