@@ -1898,7 +1898,47 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(companyPhone, { companyPhone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = companyCep,
+                    onValueChange = { value ->
+                        val digits = value.filter(Char::isDigit).take(8)
+                        companyCep = digits
+                        if (digits.length == 8 && !companyCepSearching) {
+                            companyCepSearching = true
+                            scope.launch {
+                                val address = lookupCep(digits)
+                                if (companyCep == digits && address != null && !address.optBoolean("erro", false)) {
+                                    companyStreet = address.optString("logradouro", "").orEmpty()
+                                    companyNeighborhood = address.optString("bairro", "").orEmpty()
+                                    companyCity = address.optString("localidade", "").orEmpty()
+                                    companyState = address.optString("uf", "").orEmpty().uppercase(Locale.ROOT)
+                                    error = ""
+                                } else if (companyCep == digits && address != null && address.optBoolean("erro", false)) {
+                                    error = "CEP não encontrado. Confira os 8 dígitos."
+                                } else if (companyCep == digits && address == null) {
+                                    error = "Não foi possível consultar o CEP. Confira a internet e tente novamente."
+                                }
+                                companyCepSearching = false
+                            }
+                        }
+                    },
+                    label = { Text(if (companyCepSearching) "CEP (pesquisando...)" else "CEP") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(companyStreet, { companyStreet = it }, label = { Text("Rua / Avenida") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(companyNumber, { companyNumber = it }, label = { Text("Número") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(companyNeighborhood, { companyNeighborhood = it }, label = { Text("Bairro") }, singleLine = true, modifier = Modifier.weight(1.5f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(companyCity, { companyCity = it }, label = { Text("Cidade") }, singleLine = true, modifier = Modifier.weight(1.4f))
+                    OutlinedTextField(companyState, { companyState = it.uppercase(Locale.ROOT).take(2) }, label = { Text("UF") }, singleLine = true, modifier = Modifier.weight(0.6f))
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("DOCUMENTO DA EMPRESA", color = LightBlue, fontWeight = FontWeight.Bold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1917,6 +1957,8 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> error = "Informe o e-mail autorizado."
                         companyName.trim().length < 2 -> error = "Informe o nome da empresa."
                         companyPhone.isBlank() -> error = "Informe o telefone."
+                        companyCep.filter(Char::isDigit).length != 8 -> error = "Informe um CEP válido com 8 dígitos."
+                        companyStreet.isBlank() || companyNumber.isBlank() || companyNeighborhood.isBlank() || companyCity.isBlank() || companyState.length != 2 -> error = "Preencha o endereço completo. Consulte o CEP para preencher rua, bairro, cidade e UF."
                         companyDocumentNumber.filter(Char::isDigit).length != (if (companyDocumentType == "CPF") 11 else 14) -> error = "Informe um número válido para $companyDocumentType."
                         password.length < 6 -> error = "A senha deve ter pelo menos 6 caracteres."
                         password != confirmPassword -> error = "As senhas não coincidem."
