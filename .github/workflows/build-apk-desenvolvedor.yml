@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - fix/pix-client-history-20261021
   workflow_dispatch:
 
 permissions:
@@ -43,6 +44,7 @@ jobs:
           retention-days: 30
 
       - name: Publicar APK para baixar
+        if: github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: desenvolvedor-atual
