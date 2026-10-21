@@ -27,7 +27,6 @@ jobs:
             platform-tools
             platforms;android-36
             build-tools;36.0.0
-      - name: Install Android SDK packages
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
       - name: Install Gradle directly (avoid broken wrapper distribution)
