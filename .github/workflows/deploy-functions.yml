@@ -1,0 +1,60 @@
+name: Deploy Firebase order notifications
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "functions/**"
+      - "firebase.json"
+      - ".github/workflows/deploy-functions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGUA_E_GAS_EXPRESS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Firebase deployment credential
+        id: credential
+        shell: bash
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Firebase service account secret is not configured; deployment skipped."
+          fi
+
+      - name: Set up Node.js
+        if: steps.credential.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: functions/package.json
+
+      - name: Install Firebase CLI
+        if: steps.credential.outputs.available == 'true'
+        run: npm install --global firebase-tools
+
+      - name: Install function dependencies
+        if: steps.credential.outputs.available == 'true'
+        working-directory: functions
+        run: npm install --omit=dev
+
+      - name: Authenticate and deploy order notifications
+        if: steps.credential.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+          firebase deploy --only functions --project agua-e-gas-express --non-interactive
