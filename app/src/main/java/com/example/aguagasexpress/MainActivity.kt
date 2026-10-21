@@ -1846,6 +1846,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "CONSULTANDO..." else "CONTINUAR COM ESTE E-MAIL") }
         } else if (mode == "register") {
             if (masterRegistration) {
+                // Formulário de autorização do desenvolvedor: somente nome, responsável, telefone e e-mail.
                 Text("CADASTRAR EMPRESA", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                 Text("O desenvolvedor informa apenas os dados básicos para autorizar a empresa. Depois, a própria empresa completa o cadastro no aplicativo dela.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
