@@ -15,13 +15,8 @@ async function sendData(token, title, body) {
   try {
     await getMessaging().send({
       token,
-      // Data lets AppMessagingService speak the message when Android delivers the
-      // high-priority event; the notification payload also lets Android display the
-      // written alert if the app process is not currently running.
-      notification: {
-        title: String(title).slice(0, 100),
-        body: String(body).slice(0, 1000)
-      },
+      // Send a high-priority data-only message so AppMessagingService can
+      // display the written notification and attempt voice announcement in background.
       data: {
         title: String(title).slice(0, 100),
         body: String(body).slice(0, 1000),
