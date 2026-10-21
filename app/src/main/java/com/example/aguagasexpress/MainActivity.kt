@@ -1366,25 +1366,27 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         if (!masterLicensePermanent) { masterCompanyMessage = "Esta empresa não possui licença definitiva ativa."; return }
         android.app.AlertDialog.Builder(context)
             .setTitle("Cancelar licença definitiva?")
-            .setMessage("A licença definitiva de ${masterCompanyName.ifBlank { "esta empresa" }} será cancelada e o acesso da empresa será bloqueado. Esta ação não exclui o cadastro da empresa.")
+            .setMessage("A licença definitiva de ${masterCompanyName.ifBlank { "esta empresa" }} será retirada, mas o cadastro será mantido. Depois você poderá escolher um teste ou conceder novamente a licença definitiva.")
             .setNegativeButton("VOLTAR", null)
             .setPositiveButton("SIM, CANCELAR LICENÇA") { _, _ ->
                 loading = true
                 val now = System.currentTimeMillis()
                 firestore.collection("companies").document(id).update(mapOf(
-                    "active" to false,
+                    "active" to true,
                     "licensePermanent" to false,
-                    "licenseStatus" to "CANCELLED",
+                    "licenseStatus" to "TRIAL",
                     "licenseDays" to 0,
                     "licenseExpiresAt" to now,
                     "licenseCancelledAt" to now
                 )).addOnSuccessListener {
-                    masterCompanyActive = false
+                    // Mantém a empresa cadastrada/ativa e libera as opções de teste
+                    // e de concessão novamente da licença definitiva.
+                    masterCompanyActive = true
                     masterLicensePermanent = false
-                    masterLicenseStatus = "CANCELLED"
+                    masterLicenseStatus = "TRIAL"
                     masterLicenseDays = 0
                     masterLicenseExpiresAt = now
-                    masterCompanyMessage = "Licença definitiva cancelada. O cadastro da empresa foi mantido."
+                    masterCompanyMessage = "Licença definitiva cancelada. Você pode selecionar um teste ou conceder novamente a licença definitiva."
                     loading = false
                     loadLatestMasterCompany()
                 }.addOnFailureListener { e ->
@@ -1593,7 +1595,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 }
                 // Mostrar a ação sempre nos dados da empresa ativa, sem depender de
                 // masterLicensePermanent estar carregado corretamente na tela.
-                if (masterCompanyActive) {
+                if (masterLicensePermanent && masterCompanyActive) {
                     Spacer(Modifier.height(6.dp))
                     Button(
                         enabled = !loading && masterCompanyId.isNotBlank(),
