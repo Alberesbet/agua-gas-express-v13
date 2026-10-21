@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.core.content.ContextCompat
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationCompat
@@ -27,7 +28,7 @@ class AppMessagingService : FirebaseMessagingService() {
             ?: message.notification?.body?.takeIf { it.isNotBlank() }
             ?: "Você tem uma atualização do pedido."
         showNotification(title, body)
-        if (data["voice"] != "false") speak(body)
+        if (data["voice"] != "false") startVoiceAnnouncement(body)
     }
 
     override fun onNewToken(token: String) {
@@ -69,44 +70,16 @@ class AppMessagingService : FirebaseMessagingService() {
         manager.notify((System.currentTimeMillis() and 0x7fffffff).toInt(), notification)
     }
 
-    private fun speak(text: String) {
+    private fun startVoiceAnnouncement(text: String) {
         try {
-            val utteranceId = "aguagas-push-${System.currentTimeMillis()}"
-            lateinit var speech: TextToSpeech
-            speech = TextToSpeech(applicationContext) { status ->
-                if (status != TextToSpeech.SUCCESS) {
-                    try { speech.shutdown() } catch (_: Exception) { }
-                    return@TextToSpeech
-                }
-                try {
-                    val language = speech.setLanguage(Locale("pt", "BR"))
-                    if (language == TextToSpeech.LANG_MISSING_DATA ||
-                        language == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        speech.shutdown()
-                        return@TextToSpeech
-                    }
-                    speech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onStart(id: String?) {}
-                        override fun onDone(id: String?) {
-                            try { speech.shutdown() } catch (_: Exception) { }
-                        }
-                        @Deprecated("Deprecated in Android API")
-                        override fun onError(id: String?) {
-                            try { speech.shutdown() } catch (_: Exception) { }
-                        }
-                        override fun onError(id: String?, errorCode: Int) {
-                            try { speech.shutdown() } catch (_: Exception) { }
-                        }
-                    })
-                    @Suppress("DEPRECATION")
-                    val result = speech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                    if (result == TextToSpeech.ERROR) speech.shutdown()
-                } catch (_: Exception) {
-                    try { speech.shutdown() } catch (_: Exception) { }
-                }
+            val intent = Intent(this, VoiceAnnouncementService::class.java).putExtra("text", text)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent)
+            } else {
+                startService(intent)
             }
         } catch (_: Exception) {
-            // A notificação escrita continua disponível mesmo se a síntese de voz falhar.
+            // A notificação escrita continua disponível mesmo se o áudio não puder iniciar.
         }
     }
 }
