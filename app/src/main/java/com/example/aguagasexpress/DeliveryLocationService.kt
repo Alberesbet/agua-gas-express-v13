@@ -57,17 +57,43 @@ class DeliveryLocationService : Service(), LocationListener {
         }
         prefs.edit().putString("active_order_id", orderId).apply()
         try {
-            // Publish the last known position immediately so the client does not see only the fixed destination.
+            // Publica a última posição conhecida para evitar que o mapa mostre apenas o destino.
             val lastKnown = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-                .mapNotNull { provider -> try { locationManager.getLastKnownLocation(provider) } catch (_: Exception) { null } }
+                .mapNotNull { provider ->
+                    try {
+                        if (locationManager.isProviderEnabled(provider)) locationManager.getLastKnownLocation(provider) else null
+                    } catch (_: Exception) { null }
+                }
                 .maxByOrNull { it.time }
             if (lastKnown != null) onLocationChanged(lastKnown)
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 5f, this)
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 10f, this)
+
+            // Registra cada provedor separadamente: GPS desligado/indisponível não pode impedir
+            // o provedor de rede de atualizar a localização em tempo real.
+            var registered = false
+            for (provider in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+                try {
+                    if (locationManager.isProviderEnabled(provider)) {
+                        val interval = if (provider == LocationManager.GPS_PROVIDER) 3000L else 5000L
+                        val distance = if (provider == LocationManager.GPS_PROVIDER) 5f else 10f
+                        locationManager.requestLocationUpdates(provider, interval, distance, this)
+                        registered = true
+                    }
+                } catch (_: SecurityException) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                } catch (_: Exception) {
+                    // Tenta o próximo provedor se este não estiver disponível.
+                }
+            }
+            if (!registered) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         } catch (_: SecurityException) {
             stopSelf()
             return START_NOT_STICKY
-        } catch (_: Exception) { }
+        }
         return START_STICKY
     }
 
