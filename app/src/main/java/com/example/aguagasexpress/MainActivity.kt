@@ -4,6 +4,7 @@ import android.content.Context
 import android.location.Geocoder
 import android.Manifest
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.pm.PackageManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
