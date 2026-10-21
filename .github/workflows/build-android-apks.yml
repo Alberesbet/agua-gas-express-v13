@@ -24,10 +24,14 @@ jobs:
         with:
           gradle-version: '8.13'
           validate-wrappers: false
-      - name: Aceitar licenças e instalar Android SDK
-        run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up Android SDK and accept licenses
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
       - name: Compile all app profiles
         run: gradle --no-daemon --stacktrace :app:assembleAllProfilesDebug
       - name: Upload APKs
