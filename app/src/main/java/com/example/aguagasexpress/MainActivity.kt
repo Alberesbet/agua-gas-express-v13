@@ -2195,6 +2195,12 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
     var registeredCustomerCount by remember { mutableStateOf(0) }
     var registeredCustomers by remember { mutableStateOf(listOf<Pair<String, String>>()) }
     var showCustomersDeleteDialog by remember { mutableStateOf(false) }
+    var showCustomerListDialog by remember { mutableStateOf(false) }
+    var showCompanyCustomerHistoryDialog by remember { mutableStateOf(false) }
+    var selectedHistoryCustomerName by remember { mutableStateOf("") }
+    var selectedHistoryCustomerPhone by remember { mutableStateOf("") }
+    var selectedHistoryCustomerUid by remember { mutableStateOf("") }
+    var showCustomerPurchaseHistoryDialog by remember { mutableStateOf(false) }
     var showResetSalesConfirm by remember { mutableStateOf(false) }
     var showShareLinksDialog by remember { mutableStateOf(false) }
     var apkOperationInProgress by remember { mutableStateOf(false) }
@@ -2476,14 +2482,14 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
 
                 // A nuvem é a fonte da verdade. Não restaurar do armazenamento local pedidos
                 // removidos após cancelamento ou conclusão.
-                val merged = remoteOrders.filter { it.status != "Concluído" && it.status != "Cancelado" }
-                    .sortedBy { it.id }
+                // Manter pedidos concluídos na nuvem é necessário para o histórico e os recibos.
+                // As telas operacionais filtram apenas os status ativos.
+                val merged = remoteOrders.sortedBy { it.id }
                 orders = merged
                 saveOrders(prefs, merged)
-                // Remover documentos de teste antigos e registros já encerrados, sem tocar em pedidos ativos.
-                snapshot.documents.filter { doc ->
-                    doc.getBoolean("demo") == true || doc.getString("status") == "Concluído" || doc.getString("status") == "Cancelado"
-                }.forEach { doc -> doc.reference.delete() }
+                // Só remover registros de demonstração; pedidos reais concluídos permanecem no histórico.
+                snapshot.documents.filter { doc -> doc.getBoolean("demo") == true }
+                    .forEach { doc -> doc.reference.delete() }
                 firebaseStatus = "Sincronização ativa · ${remoteOrders.size} pedido(s)"
             }
 
@@ -2737,7 +2743,11 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 "salesMonthlyWater" to monthWater + order.waterQty,
                 "salesMonthlyGas" to monthGas + order.gasQty
             ), SetOptions.merge())
-            transaction.delete(orderRef)
+            transaction.set(
+                orderRef,
+                orderToFirestoreMap(order.copy(status = "Concluído", trackingActive = false)),
+                SetOptions.merge()
+            )
             true
         }.addOnSuccessListener { counted ->
             if (counted) {
@@ -2748,11 +2758,13 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 salesMonthlyWater = if (savedMonth == month) salesMonthlyWater + order.waterQty else order.waterQty
                 salesMonthlyGas = if (savedMonth == month) salesMonthlyGas + order.gasQty else order.gasQty
                 prefs.edit().putString("salesDailyDate", today).putString("salesMonthlyKey", month).apply()
-                firestore.collection("orders").document(order.id.toString()).collection("messages").get().addOnSuccessListener { snap ->
-                    val batch = firestore.batch(); snap.documents.forEach { batch.delete(it.reference) }; batch.commit()
-                }
-                val remaining = orders.filterNot { it.id == order.id }
-                orders = remaining; saveOrders(prefs, remaining)
+                // Guardar o pedido concluído para que empresa e cliente consultem o histórico.
+                val completedOrder = order.copy(status = "Concluído", trackingActive = false)
+                val updatedOrders = orders.map { if (it.id == order.id) completedOrder else it }
+                    .let { list -> if (list.none { it.id == order.id }) list + completedOrder else list }
+                    .sortedBy { it.id }
+                orders = updatedOrders
+                saveOrders(prefs, updatedOrders)
                 onDone()
             } else {
                 message = "Este pedido não está mais na nuvem. Atualize a lista antes de concluir."
@@ -3520,7 +3532,62 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                 }
                 if (clientProfileSaved) {
                     Spacer(Modifier.height(10.dp))
+                    MainButton("📋 HISTÓRICO DE COMPRAS") { showCustomerPurchaseHistoryDialog = true }
+                    Spacer(Modifier.height(6.dp))
                     MainButton("VOLTAR AO INÍCIO") { message = ""; page = Page.HOME }
+                }
+                if (showCustomerPurchaseHistoryDialog && clientProfileSaved) {
+                    val currentUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                    val clientPhoneDigits = clientPhone.filter(Char::isDigit)
+                    val purchaseHistory = orders.filter { order ->
+                        !order.demo && order.companyId == companyId &&
+                            ((currentUid.isNotBlank() && order.customerUid == currentUid) ||
+                             (order.customerUid.isBlank() && clientPhoneDigits.isNotBlank() && order.phone.filter(Char::isDigit) == clientPhoneDigits))
+                    }.distinctBy { it.id }.sortedByDescending { it.id }
+                    AlertDialog(
+                        onDismissRequest = { showCustomerPurchaseHistoryDialog = false },
+                        title = { Text("Meu histórico de compras") },
+                        text = {
+                            if (purchaseHistory.isEmpty()) {
+                                Text("Nenhuma compra encontrada. Os pedidos feitos com este cadastro aparecerão aqui.")
+                            } else {
+                                Column(
+                                    modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    purchaseHistory.forEach { historyOrder ->
+                                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))) {
+                                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                Text("Pedido #${historyOrder.orderNumber.toString().padStart(2, '0')}", color = Ink, fontWeight = FontWeight.ExtraBold)
+                                                Text("Itens: ${historyOrder.items}", color = Ink)
+                                                Text("Total: ${money(historyOrder.total)} • ${historyOrder.status}", color = Ink, fontWeight = FontWeight.Bold)
+                                                Text("Pagamento: ${historyOrder.payment} • ${if (historyOrder.paid) "Confirmado" else "Pendente"}", color = Ink)
+                                                Button(onClick = { openOrderReceipt(context, historyOrder, companyName) }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text("👁️ VISUALIZAR RECIBO")
+                                                }
+                                                OutlinedButton(onClick = { shareOrderReceipt(context, historyOrder, companyName) }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text("📤 ENVIAR RECIBO")
+                                                }
+                                                if (historyOrder.status == "Em entrega") {
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            trackingOrderId = historyOrder.id
+                                                            trackingReturnPage = Page.CUSTOMER
+                                                            showCustomerPurchaseHistoryDialog = false
+                                                            page = Page.TRACKING
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) { Text("📍 VER ROTA DO ENTREGADOR") }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showCustomerPurchaseHistoryDialog = false }) { Text("Fechar") }
+                        }
+                    )
                 }
             }
 
@@ -3599,8 +3666,16 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             Text("🔥 Gás: $salesMonthlyGas", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                         Divider(color = Color(0xFF35516F))
-                        Text("👥 CLIENTES INSCRITOS", color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("$registeredCustomerCount cliente(s)", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
+                        Text(
+                            "👥 CLIENTES INSCRITOS",
+                            modifier = Modifier.clickable { showCustomerListDialog = true },
+                            color = LightBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp
+                        )
+                        Text(
+                            "$registeredCustomerCount cliente(s) • toque para ver histórico",
+                            modifier = Modifier.clickable { showCustomerListDialog = true },
+                            color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp
+                        )
                     }
                 }
                 // Compartilha convites vinculados à empresa para cliente e entregador.
@@ -3628,6 +3703,86 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             }
                         },
                         confirmButton = { TextButton(onClick = { showCustomersDeleteDialog = false }) { Text("Fechar") }
+                        }
+                    )
+                }
+                if (showCustomerListDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showCustomerListDialog = false },
+                        title = { Text("Clientes da empresa") },
+                        text = {
+                            if (registeredCustomers.isEmpty()) {
+                                Text("Ainda não há clientes cadastrados nesta empresa.")
+                            } else {
+                                Column(
+                                    modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("Selecione um cliente para consultar as compras e os recibos dele.")
+                                    registeredCustomers.forEach { (docId, customerLabel) ->
+                                        OutlinedButton(
+                                            onClick = {
+                                                FirebaseFirestore.getInstance().collection("customers").document(docId).get()
+                                                    .addOnSuccessListener { customerDoc ->
+                                                        selectedHistoryCustomerName = customerDoc.getString("name")?.ifBlank { null } ?: customerLabel
+                                                        selectedHistoryCustomerPhone = customerDoc.getString("phone").orEmpty()
+                                                        selectedHistoryCustomerUid = customerDoc.getString("uid").orEmpty()
+                                                        showCustomerListDialog = false
+                                                        showCompanyCustomerHistoryDialog = true
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        message = "Não foi possível abrir o cliente: ${e.localizedMessage ?: "erro"}"
+                                                    }
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text("👤 $customerLabel  •  Ver histórico") }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showCustomerListDialog = false }) { Text("Fechar") }
+                        }
+                    )
+                }
+                if (showCompanyCustomerHistoryDialog) {
+                    val customerPhoneDigits = selectedHistoryCustomerPhone.filter(Char::isDigit)
+                    val customerHistoryOrders = orders.filter { order ->
+                        !order.demo && order.companyId == companyId &&
+                            ((selectedHistoryCustomerUid.isNotBlank() && order.customerUid == selectedHistoryCustomerUid) ||
+                             (customerPhoneDigits.isNotBlank() && order.phone.filter(Char::isDigit) == customerPhoneDigits))
+                    }.distinctBy { it.id }.sortedByDescending { it.id }
+                    AlertDialog(
+                        onDismissRequest = { showCompanyCustomerHistoryDialog = false },
+                        title = { Text("Compras de $selectedHistoryCustomerName") },
+                        text = {
+                            if (customerHistoryOrders.isEmpty()) {
+                                Text("Nenhuma compra encontrada para este cliente nesta empresa.")
+                            } else {
+                                Column(
+                                    modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    customerHistoryOrders.forEach { historyOrder ->
+                                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))) {
+                                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                Text("Pedido #${historyOrder.orderNumber.toString().padStart(2, '0')}", color = Ink, fontWeight = FontWeight.ExtraBold)
+                                                Text("Itens: ${historyOrder.items}", color = Ink)
+                                                Text("Total: ${money(historyOrder.total)} • ${historyOrder.status}", color = Ink, fontWeight = FontWeight.Bold)
+                                                Text("Pagamento: ${historyOrder.payment} • ${if (historyOrder.paid) "Confirmado" else "Pendente"}", color = Ink)
+                                                Button(onClick = { openOrderReceipt(context, historyOrder, companyName) }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text("👁️ VISUALIZAR RECIBO")
+                                                }
+                                                OutlinedButton(onClick = { shareOrderReceipt(context, historyOrder, companyName) }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text("📤 ENVIAR RECIBO")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showCompanyCustomerHistoryDialog = false }) { Text("Fechar") }
                         }
                     )
                 }
