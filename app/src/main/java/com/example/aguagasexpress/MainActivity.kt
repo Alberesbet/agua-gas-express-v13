@@ -1326,6 +1326,40 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível acrescentar dias: ${e.localizedMessage ?: "erro no Firebase"}" }
     }
 
+    fun cancelCompanyLicense() {
+        val id = masterCompanyId
+        if (id.isBlank()) { masterCompanyMessage = "Empresa não encontrada."; return }
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Cancelar acesso da empresa?")
+            .setMessage("Isso cancelará o teste ou a licença definitiva e bloqueará o acesso desta empresa.")
+            .setNegativeButton("VOLTAR", null)
+            .setPositiveButton("CANCELAR ACESSO") { _, _ ->
+                loading = true
+                val now = System.currentTimeMillis()
+                firestore.collection("companies").document(id).update(mapOf(
+                    "active" to false,
+                    "licensePermanent" to false,
+                    "licenseStatus" to "CANCELLED",
+                    "licenseDays" to 0,
+                    "licenseExpiresAt" to now,
+                    "licenseCancelledAt" to now
+                )).addOnSuccessListener {
+                    masterCompanyActive = false
+                    masterLicensePermanent = false
+                    masterLicenseStatus = "CANCELLED"
+                    masterLicenseDays = 0
+                    masterLicenseExpiresAt = now
+                    masterCompanyMessage = "Acesso da empresa cancelado."
+                    loading = false
+                    loadLatestMasterCompany()
+                }.addOnFailureListener { e ->
+                    loading = false
+                    masterCompanyMessage = "Não foi possível cancelar o acesso: ${e.localizedMessage ?: "erro no Firebase"}"
+                }
+            }
+            .show()
+    }
+
     fun shareCompanyLink(code: String, emailForMessage: String = "", platform: String = "") {
         val normalized = normalizeCompanyCode(code)
         if (normalized.length < 6) { masterStatus = "Nenhum link válido foi gerado ainda."; return }
@@ -1511,15 +1545,23 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 if (masterCompanyMessage.isNotBlank()) Text(masterCompanyMessage, color = Color(0xFF7F0000), textAlign = TextAlign.Center, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp).background(Color(0xFFFFE8E8), RoundedCornerShape(8.dp)).padding(10.dp))
                 Spacer(Modifier.height(10.dp))
                 Text("CONTROLE DA LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
-                if (!masterLicensePermanent) {
+                if (!masterLicensePermanent && masterCompanyActive) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(masterExtensionDays, { masterExtensionDays = it.filter(Char::isDigit).take(3) }, label = { Text("Dias a acrescentar") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         Button(enabled = !loading, onClick = { extendCompanyTrial() }, modifier = Modifier.weight(1f)) { Text("+ DIAS") }
                     }
                     Spacer(Modifier.height(6.dp))
                     Button(enabled = !loading, onClick = { makeCompanyPermanent() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Green)) { Text("✓ ENCERRAR TESTE E TORNAR DEFINITIVA") }
-                } else {
+                } else if (masterLicensePermanent && masterCompanyActive) {
                     Text("Esta empresa já está em licença definitiva.", color = Color(0xFF86EFAC), fontWeight = FontWeight.Bold)
+                }
+                if (masterCompanyActive) {
+                    Spacer(Modifier.height(6.dp))
+                    Button(enabled = !loading, onClick = { cancelCompanyLicense() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))) {
+                        Text("✖ CANCELAR TESTE / LICENÇA DEFINITIVA")
+                    }
+                } else {
+                    Text("Acesso desta empresa cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { shareLatestApk(context, "empresa") }, modifier = Modifier.fillMaxWidth()) { Text("🏪 ENVIAR APK DA EMPRESA") }
