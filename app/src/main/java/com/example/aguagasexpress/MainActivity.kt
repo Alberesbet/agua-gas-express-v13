@@ -1565,7 +1565,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                         disabledContainerColor = Color(0xFF5A2525)
                     )
                 ) {
-                    Text("✖ CANCELAR LICENÇA DO TESTE OU DEFINITIVA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                    Text("✖ CANCELAR EMPRESA — TESTE OU LICENÇA DEFINITIVA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
                 }
                 if (!masterCompanyActive) {
                     Text("Acesso desta empresa já está cancelado.", color = Color(0xFFFF9A9A), fontWeight = FontWeight.Bold)
@@ -1662,7 +1662,7 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB42318))
                                 ) {
-                                    Text("✖ CANCELAR PLANO / LICENÇA DA EMPRESA", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                                    Text("✖ CANCELAR EMPRESA (TESTE OU LICENÇA DEFINITIVA)", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
                                 }
                                 Text("Toque no nome para abrir os detalhes", color = Color(0xFFB7C8D9), fontSize = 11.sp)
                                 Spacer(Modifier.height(8.dp))
