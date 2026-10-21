@@ -1176,7 +1176,6 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
     var masterPermanent by remember { mutableStateOf(false) }
     var masterCompanyCode by remember { mutableStateOf("") }
     var masterCompanyName by remember { mutableStateOf("") }
-    var masterCompanyResponsible by remember { mutableStateOf("") }
     var masterCompanyEmail by remember { mutableStateOf("") }
     var masterStatus by remember { mutableStateOf("") }
     var masterCompanyPhone by remember { mutableStateOf("") }
@@ -1847,15 +1846,35 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         } else if (mode == "register") {
             if (masterRegistration) {
                 Text("CADASTRAR EMPRESA", color = Orange, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-                Text("O desenvolvedor informa apenas os dados básicos para autorizar a empresa. Depois, a própria empresa completa o cadastro no aplicativo dela.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
+                Text("Informe o nome, e-mail autorizado e telefone. O e-mail continua sendo o que libera a empresa para abrir a conta.", color = Color.White, textAlign = TextAlign.Center, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(masterCompanyName, { masterCompanyName = it }, label = { Text("Nome da empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(masterCompanyResponsible, { masterCompanyResponsible = it }, label = { Text("Nome do responsável") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(masterCompanyPhone, { masterCompanyPhone = it.filter { ch -> ch.isDigit() || ch == '+' || ch == ' ' || ch == '-' || ch == '(' || ch == ')' }.take(20) }, label = { Text("Número / telefone da empresa") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(masterCompanyEmail, { masterCompanyEmail = it }, label = { Text("E-mail autorizado") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(masterCompanyPhone, { masterCompanyPhone = it }, label = { Text("Telefone") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(masterCompanyCep, { masterCompanyCep = it.filter(Char::isDigit).take(8) }, label = { Text("CEP") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(masterCompanyStreet, { masterCompanyStreet = it }, label = { Text("Rua / Avenida") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(masterCompanyNumber, { masterCompanyNumber = it }, label = { Text("Número") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(masterCompanyNeighborhood, { masterCompanyNeighborhood = it }, label = { Text("Bairro") }, singleLine = true, modifier = Modifier.weight(1.5f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(masterCompanyCity, { masterCompanyCity = it }, label = { Text("Cidade") }, singleLine = true, modifier = Modifier.weight(1.4f))
+                    OutlinedTextField(masterCompanyState, { masterCompanyState = it.uppercase().take(2) }, label = { Text("UF") }, singleLine = true, modifier = Modifier.weight(0.6f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("DOCUMENTO DA EMPRESA", color = LightBlue, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("CPF", "CNPJ").forEach { type ->
+                        Button(onClick = { masterCompanyDocumentType = type; masterCompanyDocumentNumber = "" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (masterCompanyDocumentType == type) Green else Color(0xFF315A85))) { Text(type) }
+                    }
+                }
+                OutlinedTextField(masterCompanyDocumentNumber, { masterCompanyDocumentNumber = it.filter(Char::isDigit).take(if (masterCompanyDocumentType == "CPF") 11 else 14) }, label = { Text("Número do $masterCompanyDocumentType") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
                 Text("LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1868,14 +1887,16 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                     when {
                         masterCompanyName.trim().length < 2 -> { error = "Informe o nome da empresa."; return@Button }
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(masterCompanyEmail.trim()).matches() -> { error = "Informe um e-mail válido."; return@Button }
-                        masterCompanyResponsible.trim().length < 2 -> { error = "Informe o nome do responsável pela empresa."; return@Button }
-                        masterCompanyPhone.filter(Char::isDigit).length < 8 -> { error = "Informe um número/telefone válido."; return@Button }
+                        masterCompanyPhone.filter(Char::isDigit).length < 8 -> { error = "Informe um telefone válido."; return@Button }
+                        masterCompanyCep.filter(Char::isDigit).length != 8 -> { error = "Informe um CEP válido com 8 dígitos."; return@Button }
+                        masterCompanyStreet.isBlank() || masterCompanyNumber.isBlank() || masterCompanyNeighborhood.isBlank() || masterCompanyCity.isBlank() || masterCompanyState.length != 2 -> { error = "Preencha o endereço completo da empresa."; return@Button }
+                        masterCompanyDocumentNumber.filter(Char::isDigit).length != (if (masterCompanyDocumentType == "CPF") 11 else 14) -> { error = "Informe um número válido para $masterCompanyDocumentType."; return@Button }
                     }
                     ensureFirebase {
                         val code = generateCompanyCode(); val now = System.currentTimeMillis(); val permanent = masterPermanent; val days = trialDays.toIntOrNull() ?: 30; val expiry = if (permanent) 0L else now + days * 24L * 60L * 60L * 1000L; val id = UUID.randomUUID().toString(); val license = generateCommercialLicenseKey()
                         val uid = auth.currentUser?.uid
                         if (uid.isNullOrBlank()) { loading = false; error = "Firebase Auth ainda não está autenticado. Tente novamente após ativar o login anônimo no Firebase."; return@ensureFirebase }
-                        val data = mapOf("name" to masterCompanyName.trim(), "responsible" to masterCompanyResponsible.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
+                        val data = mapOf("name" to masterCompanyName.trim(), "email" to masterCompanyEmail.trim(), "authorizedEmail" to masterCompanyEmail.trim(), "companyPhone" to masterCompanyPhone.trim(), "companyCep" to masterCompanyCep.trim(), "companyStreet" to masterCompanyStreet.trim(), "companyNumber" to masterCompanyNumber.trim(), "companyNeighborhood" to masterCompanyNeighborhood.trim(), "companyCity" to masterCompanyCity.trim(), "companyState" to masterCompanyState.trim(), "companyDocumentType" to masterCompanyDocumentType, "companyDocumentNumber" to masterCompanyDocumentNumber.trim(), "companyCode" to code, "licensePermanent" to permanent, "licenseKey" to license, "licenseStatus" to if (permanent) "PERMANENT" else "TRIAL", "licenseDays" to if (permanent) 0 else days, "licenseStartedAt" to now, "licenseExpiresAt" to expiry, "active" to true, "activated" to false, "createdAt" to now, "createdByMaster" to true, "ownerUid" to uid,
                                 "appVersion" to "12.0-test")
                         firestore.collection("companies").document(id).set(data).addOnSuccessListener {
                             masterCompanyCode = code; masterCompanyEmail = masterCompanyEmail.trim(); masterCompanyName = masterCompanyName.trim(); masterCompanyPhone = masterCompanyPhone.trim(); masterCompanyId = id; masterLicensePermanent = permanent; masterLicenseExpiresAt = expiry; masterLicenseStatus = if (permanent) "PERMANENT" else "TRIAL"; masterLicenseDays = if (permanent) 0 else days; masterCompanyActivated = false; masterCompanyActive = true; masterCompanyCreatedAt = now; masterCompanyVersion = "12.0-test"; masterStatus = "Empresa cadastrada com sucesso. Agora os links da empresa foram liberados para envio."; masterRegistration = false; masterPermanent = false; mode = "master"; loading = false
@@ -2331,7 +2352,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
         }
     }
     var clientLastOrderId by remember { mutableStateOf<Long?>(null) }
-    var showCustomerPurchaseHistory by remember { mutableStateOf(false) }
     var orderSubmitting by remember { mutableStateOf(false) }
 
     val currentOrders by rememberUpdatedState(orders)
@@ -3159,38 +3179,6 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         clientProfileSaved = false
                         message = ""
                     }) { Text("Alterar endereço / dados", color = LightBlue) }
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(onClick = { showCustomerPurchaseHistory = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("🧾 HISTÓRICO DE COMPRAS")
-                    }
-                    if (showCustomerPurchaseHistory) {
-                        val historyOrders = orders.filter { order ->
-                            !order.demo && order.paid && order.receiptGeneratedAt > 0L &&
-                                order.customerUid == FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-                        }.sortedByDescending { it.receiptGeneratedAt }
-                        AlertDialog(
-                            onDismissRequest = { showCustomerPurchaseHistory = false },
-                            title = { Text("Histórico de compras") },
-                            text = {
-                                if (historyOrders.isEmpty()) {
-                                    Text("Nenhum recibo disponível ainda.")
-                                } else {
-                                    Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                                        historyOrders.forEach { historyOrder ->
-                                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                Text(java.text.SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR")).format(java.util.Date(historyOrder.receiptGeneratedAt)), modifier = Modifier.weight(1f), color = Ink)
-                                                TextButton(onClick = { openOrderReceipt(context, historyOrder, prefs.getString("company_name", "Comércio Express") ?: "Comércio Express") }) {
-                                                    Text("VER RECIBO")
-                                                }
-                                            }
-                                            Divider()
-                                        }
-                                    }
-                                }
-                            },
-                            confirmButton = { TextButton(onClick = { showCustomerPurchaseHistory = false }) { Text("FECHAR") } }
-                        )
-                    }
                     Spacer(Modifier.height(2.dp))
                     var clientQuantities by remember { mutableStateOf(products.associate { it.name to 0 }) }
                     LaunchedEffect(products.map { it.name to it.isGas }) {
