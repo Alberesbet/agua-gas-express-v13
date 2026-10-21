@@ -67,28 +67,31 @@ class AppMessagingService : FirebaseMessagingService() {
         manager.notify((System.currentTimeMillis() and 0x7fffffff).toInt(), notification)
     }
 
+    private var speechInstance: TextToSpeech? = null
+
     private fun speak(text: String) {
         try {
-            val tts = TextToSpeech(applicationContext) { status ->
+            lateinit var speech: TextToSpeech
+            speech = TextToSpeech(applicationContext) { status ->
                 if (status == TextToSpeech.SUCCESS) {
-                    val language = ttsLanguage(text)
-                    if (language) {
-                        @Suppress("DEPRECATION")
-                        getSpeechInstance()?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "aguagas-push-${System.currentTimeMillis()}")
-                    }
+                    try {
+                        val language = speech.setLanguage(Locale("pt", "BR"))
+                        if (language != TextToSpeech.LANG_MISSING_DATA && language != TextToSpeech.LANG_NOT_SUPPORTED) {
+                            @Suppress("DEPRECATION")
+                            speech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "aguagas-push-${System.currentTimeMillis()}")
+                        }
+                    } catch (_: Exception) { }
                 }
             }
+            speechInstance = speech
         } catch (_: Exception) {
             // Notification remains available if speech synthesis is unavailable.
         }
     }
 
-    private var speechInstance: TextToSpeech? = null
-    private fun ttsLanguage(text: String): Boolean {
-        val engine = speechInstance ?: return false
-        val result = engine.setLanguage(Locale("pt", "BR"))
-        return result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+    override fun onDestroy() {
+        try { speechInstance?.stop(); speechInstance?.shutdown() } catch (_: Exception) { }
+        speechInstance = null
+        super.onDestroy()
     }
-
-    private fun getSpeechInstance(): TextToSpeech? = speechInstance
 }
