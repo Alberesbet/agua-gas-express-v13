@@ -1093,8 +1093,8 @@ private fun shareLatestApk(
         "desenvolvedor" -> "AguaGasExpress-Desenvolvedor.apk"
         else -> "AguaGasExpress-Empresa.apk"
     }
-    // O workflow publica os quatro APKs na release apk-test-latest.
-    val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/apk-test-latest/$fileName"
+    // O workflow publica os quatro APKs na release latest-build.
+    val apkUrl = "https://github.com/Alberesbet/agua-gas-express-v13/releases/download/latest-build/$fileName"
     val normalizedCode = normalizeCompanyCode(companyCode)
 
     Thread {
