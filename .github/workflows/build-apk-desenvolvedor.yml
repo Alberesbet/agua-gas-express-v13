@@ -28,6 +28,11 @@ jobs:
           gradle-version: '8.13'
           validate-wrappers: false
 
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools,platforms;android-36,build-tools;36.0.0
+
       - name: Compilar APK Desenvolvedor
         run: gradle --no-daemon --build-cache :app:assembleDesenvolvedorDebug
 
