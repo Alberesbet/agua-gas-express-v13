@@ -2389,6 +2389,8 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                         snapshot.getString("companyName")?.let { prefs.edit().putString("company_name", it).apply() }
                         snapshot.getString("companyResponsible")?.let { prefs.edit().putString("company_responsible", it).apply() }
                         snapshot.getString("companyEmail")?.let { prefs.edit().putString("company_email", it).apply() }
+                        snapshot.getString("companyDocumentType")?.let { prefs.edit().putString("company_document_type", it).apply() }
+                        snapshot.getString("companyDocumentNumber")?.let { prefs.edit().putString("company_document_number", it).apply() }
                         snapshot.getString("companyCep")?.let { prefs.edit().putString("company_cep", it).apply() }
                         snapshot.getString("companyStreet")?.let { prefs.edit().putString("company_street", it).apply() }
                         snapshot.getString("companyNumber")?.let { prefs.edit().putString("company_number", it).apply() }
@@ -2430,6 +2432,10 @@ private fun AguaGasApp(prefs: android.content.SharedPreferences) {
                             "companyName" to (prefs.getString("company_name", "") ?: ""),
                             "companyResponsible" to (prefs.getString("company_responsible", "") ?: ""),
                             "companyEmail" to (prefs.getString("company_email", "") ?: ""),
+                            "companyDocumentType" to (prefs.getString("company_document_type", "") ?: ""),
+                            "companyDocumentNumber" to (prefs.getString("company_document_number", "") ?: ""),
+                            "companyDocumentType" to (prefs.getString("company_document_type", "") ?: ""),
+                            "companyDocumentNumber" to (prefs.getString("company_document_number", "") ?: ""),
                             "companyCep" to (prefs.getString("company_cep", "") ?: ""),
                             "companyStreet" to (prefs.getString("company_street", "") ?: ""),
                             "companyNumber" to (prefs.getString("company_number", "") ?: ""),
