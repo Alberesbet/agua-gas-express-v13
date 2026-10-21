@@ -1298,6 +1298,35 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
         }.addOnFailureListener { e -> loading = false; masterCompanyMessage = "Não foi possível finalizar o teste: ${e.localizedMessage ?: "erro no Firebase"}" }
     }
 
+    fun setCompanyTrial(days: Int) {
+        val id = masterCompanyId
+        if (id.isBlank()) { masterCompanyMessage = "Empresa não encontrada."; return }
+        if (days !in listOf(10, 15, 30)) { masterCompanyMessage = "Selecione um período de teste válido."; return }
+        if (masterLicensePermanent) { masterCompanyMessage = "Cancele a licença definitiva antes de escolher um período de teste."; return }
+        val now = System.currentTimeMillis()
+        val expiry = now + days * 24L * 60L * 60L * 1000L
+        loading = true
+        firestore.collection("companies").document(id).update(mapOf(
+            "active" to true,
+            "licensePermanent" to false,
+            "licenseStatus" to "TRIAL",
+            "licenseDays" to days,
+            "licenseStartedAt" to now,
+            "licenseExpiresAt" to expiry
+        )).addOnSuccessListener {
+            masterCompanyActive = true
+            masterLicensePermanent = false
+            masterLicenseStatus = "TRIAL"
+            masterLicenseDays = days
+            masterLicenseExpiresAt = expiry
+            masterCompanyMessage = "Teste de $days dias ativado."
+            loading = false
+        }.addOnFailureListener { e ->
+            loading = false
+            masterCompanyMessage = "Não foi possível definir o teste: ${e.localizedMessage ?: "erro no Firebase"}"
+        }
+    }
+
     fun extendCompanyTrial() {
         val id = masterCompanyId
         val extra = masterExtensionDays.toIntOrNull() ?: 0
@@ -1584,6 +1613,18 @@ private fun CommercialCompanyGate(prefs: android.content.SharedPreferences) {
                 Spacer(Modifier.height(10.dp))
                 Text("CONTROLE DA LICENÇA", color = LightBlue, fontWeight = FontWeight.ExtraBold)
                 if (!masterLicensePermanent && masterCompanyActive) {
+                    Text("DEFINIR PERÍODO DE TESTE", color = LightBlue, fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(10, 15, 30).forEach { days ->
+                            Button(
+                                enabled = !loading,
+                                onClick = { setCompanyTrial(days) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = if (masterLicenseDays == days) Green else Color(0xFF315A85))
+                            ) { Text("$days dias") }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(masterExtensionDays, { masterExtensionDays = it.filter(Char::isDigit).take(3) }, label = { Text("Dias a acrescentar") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         Button(enabled = !loading, onClick = { extendCompanyTrial() }, modifier = Modifier.weight(1f)) { Text("+ DIAS") }
