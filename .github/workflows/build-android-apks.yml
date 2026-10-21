@@ -24,14 +24,15 @@ jobs:
         with:
           gradle-version: '8.13'
           validate-wrappers: false
-      - name: Set up Android SDK and accept licenses
-        uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-licenses: true
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+      - name: Configurar Android SDK e aceitar licenças
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "/usr/local/lib/android/sdk/platform-tools" >> "$GITHUB_PATH"
+          echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          SDKMANAGER="/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
       - name: Compile all app profiles
         run: gradle --no-daemon --stacktrace :app:assembleAllProfilesDebug
       - name: Upload APKs
